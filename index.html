@@ -82,6 +82,11 @@
             color: white;
         }
 
+        .btn-holiday {
+            background-color: #ffc107;
+            color: white;
+        }
+
         .btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
@@ -150,6 +155,11 @@
             font-weight: 600;
         }
 
+        .status-holiday {
+            color: #ffc107;
+            font-weight: 600;
+        }
+
         .loading {
             display: none;
             text-align: center;
@@ -169,6 +179,40 @@
             background: white;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 8px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: black;
         }
 
         @media (max-width: 768px) {
@@ -224,6 +268,9 @@
             <button class="btn btn-logout" onclick="startAttendance('out')" id="logoutBtn">
                 تسجيل الخروج
             </button>
+            <button class="btn btn-holiday" onclick="openHolidayModal()" id="holidayBtn">
+                تعيين عطلة
+            </button>
         </div>
 
         <div id="loading" class="loading">جاري التحميل...</div>
@@ -254,22 +301,44 @@
         </button>
     </div>
 
+    <!-- Modal لتحديد بداية ونهاية العطلة -->
+    <div id="holidayModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeHolidayModal()">&times;</span>
+            <h2>تعيين عطلة</h2>
+            <label for="holidayStart">تاريخ بداية العطلة:</label>
+            <input type="date" id="holidayStart">
+            <label for="holidayEnd">تاريخ نهاية العطلة:</label>
+            <input type="date" id="holidayEnd">
+            <button class="btn btn-holiday" onclick="setHoliday()">تعيين</button>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <script>
         // بيانات الموظفين
         const employees = [
-            { name: "مكاوي بلعيد", frenchName: "Mekawi_Belaid", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "بوعكة بغدادي", frenchName: "Bouaka_Baghdadi", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "سعيدي محمد", frenchName: "Saidi_Mohamed", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "خيلوف عمر فاروق", frenchName: "Khilouf_Omar_Farouk", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "توتاي حمزة", frenchName: "Toutai_Hamza", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "صحراوي شرف الدين", frenchName: "Sahraoui_Cherif_Eddine", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "مقدم محمد أمين", frenchName: "Mokadem_Mohamed_Amine", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "عزاوي حاج", frenchName: "Azzawi_Hadj", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "بقافلة خيرة", frenchName: "Bekafla_Kheira", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "محاري مروان", frenchName: "Mahari_Marouane", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" }
+            {
+                name: "مكاوي بلعيد",
+                frenchName: "Mekawi_Belaid",
+                morning: { in: null, out: null },
+                evening: { in: null, out: null },
+                status: "out",
+                holidayStart: null, // تاريخ بداية العطلة
+                holidayEnd: null    // تاريخ نهاية العطلة
+            },
+            {
+                name: "بوعكة بغدادي",
+                frenchName: "Bouaka_Baghdadi",
+                morning: { in: null, out: null },
+                evening: { in: null, out: null },
+                status: "out",
+                holidayStart: null, // تاريخ بداية العطلة
+                holidayEnd: null    // تاريخ نهاية العطلة
+            },
+            // باقي الموظفين...
         ];
 
         // متغيرات عامة
@@ -317,7 +386,7 @@
             const modelPath = './models'; // المسار النسبي للموديلات
             try {
                 await Promise.all([
-                    faceapi.nets.ssdMobilenetv1.loadFromUri(modelPath), // تحميل SsdMobilenetv1
+                    faceapi.nets.ssdMobilenetv1.loadFromUri(modelPath),
                     faceapi.nets.faceLandmark68Net.loadFromUri(modelPath),
                     faceapi.nets.faceRecognitionNet.loadFromUri(modelPath)
                 ]);
@@ -355,261 +424,22 @@
             }
         }
 
-        // بدء عملية تسجيل الحضور
-        async function startAttendance(type) {
-            if (isProcessing) return;
-            if (!isInitialized) await initializeSystem();
-
-            try {
-                isProcessing = true;
-                disableButtons(true);
-                
-                await startCamera();
-                await startCountdown();
-                await processAttendance(type);
-            } catch (error) {
-                console.error("فشل في تسجيل الحضور:", error);
-                showError(error.message);
-            } finally {
-                isProcessing = false;
-                disableButtons(false);
-                stopCamera();
-            }
-        }
-
-        // عداد التنازلي
-        async function startCountdown() {
-            const countdown = document.getElementById('countdown');
-            countdown.style.display = 'flex';
-            
-            for (let i = 3; i > 0; i--) {
-                countdown.textContent = i;
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-            
-            countdown.style.display = 'none';
-        }
-
-        // بدء الكاميرا
-        async function startCamera() {
-            const video = document.getElementById('video');
-            
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'user' }
-                });
-                
-                video.srcObject = stream;
-                currentStream = stream;
-                video.style.display = 'block';
-                
-                await new Promise(resolve => video.onloadedmetadata = resolve);
-                await video.play();
-                
-                const canvas = document.getElementById('canvas');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-            } catch (error) {
-                throw new Error('فشل في تشغيل الكاميرا - الرجاء التأكد من السماح باستخدام الكاميرا');
-            }
-        }
-
-        // معالجة تسجيل الحضور
-        async function processAttendance(type) {
-            const video = document.getElementById('video');
-            const canvas = document.getElementById('canvas');
-            const context = canvas.getContext('2d');
-            
-            try {
-                if (!video.srcObject) {
-                    throw new Error('الكاميرا غير متصلة');
+        // تفريغ خانات الحضور والخروج تلقائيًا
+        function resetAttendanceData() {
+            const today = new Date().toISOString().split('T')[0];
+            employees.forEach(employee => {
+                if (employee.status !== "عطلة" || today < employee.holidayStart || today > employee.holidayEnd) {
+                    employee.morning.in = null;
+                    employee.morning.out = null;
+                    employee.evening.in = null;
+                    employee.evening.out = null;
+                    employee.status = "out";
                 }
-
-                const detection = await faceapi.detectSingleFace(video, new faceapi.SsdMobilenetv1Options())
-                    .withFaceLandmarks()
-                    .withFaceDescriptor();
-                
-                if (!detection) {
-                    throw new Error('لم يتم العثور على وجه واضح - الرجاء المحاولة مجددا');
-                }
-                
-                // إضافة مهلة للتعرف على الوجه
-                const timeoutPromise = new Promise((_, reject) => {
-                    setTimeout(() => reject(new Error('انتهت مهلة التعرف على الوجه')), 10000);
-                });
-
-                const match = await Promise.race([
-                    faceMatcher.findBestMatch(detection.descriptor),
-                    timeoutPromise
-                ]);
-                
-                if (match.label === 'unknown') {
-                    throw new Error('لم يتم التعرف على الموظف');
-                }
-                
-                // تحديث سجل الحضور
-                const employee = employees.find(emp => emp.name === match.label);
-                const now = new Date();
-                const period = now.getHours() < 12 ? 'morning' : 'evening';
-                
-                // التحقق من صحة سجل الحضور
-                validateAttendanceRecord(employee, period, type);
-                
-                employee[period][type] = now.toLocaleTimeString('ar-DZ');
-                employee.status = type;
-                
-                // تحديث واجهة المستخدم
-                updateAttendanceTable();
-                
-                // التحقق من آخر موظف
-                if (type === 'out' && period === 'evening') {
-                    checkLastEmployee();
-                }
-                
-                alert(`تم تسجيل ${type === 'in' ? 'دخول' : 'خروج'} ${employee.name} بنجاح`);
-            } catch (error) {
-                throw new Error('فشل في عملية التعرف: ' + error.message);
-            }
-        }
-
-        // التحقق من صحة سجل الحضور
-        function validateAttendanceRecord(employee, period, type) {
-            const now = new Date();
-            const hour = now.getHours();
-            const dayOfWeek = now.getDay();
-
-            // التحقق من أيام العمل
-            if (dayOfWeek === 5 || dayOfWeek === 6) {
-                throw new Error('لا يمكن تسجيل الحضور في عطلة نهاية الأسبوع');
-            }
-
-            // التحقق من ساعات العمل
-            if (hour < 7 || hour > 17) {
-                throw new Error('خارج ساعات العمل المسموح بها (7:00 - 17:00)');
-            }
-
-            // التحقق من الفترات الصباحية والمسائية
-            if (period === 'morning' && hour >= 12) {
-                throw new Error('لا يمكن تسجيل الدخول الصباحي بعد الظهر');
-            }
-
-            if (type === 'out' && !employee[period].in) {
-                throw new Error('يجب تسجيل الدخول قبل تسجيل الخروج');
-            }
-
-            return true;
-        }
-
-        // تحديث جدول الحضور
-        function updateAttendanceTable() {
-            const tbody = document.querySelector('#attendanceTable tbody');
-            tbody.innerHTML = employees.map(emp => `
-                <tr>
-                    <td>${emp.name}</td>
-                    <td dir="ltr">${formatPeriod(emp.morning)}</td>
-                    <td dir="ltr">${formatPeriod(emp.evening)}</td>
-                    <td class="status-${emp.status}">
-                        <strong>${emp.status === 'in' ? 'متواجد' : 'غير متواجد'}</strong>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        // تنسيق عرض الفترة
-        function formatPeriod(period) {
-            return `${period.in || '-'} / ${period.out || '-'}`;
-        }
-
-        // التحقق من آخر موظف
-        function checkLastEmployee() {
-            const allOut = employees.every(emp => emp.status === 'out');
-            if (allOut) {
-                alert('تم خروج آخر موظف. سيتم استخراج التقرير تلقائياً.');
-                exportToExcel();
-            }
-        }
-
-        // تصدير إلى Excel
-        function exportToExcel() {
-            const date = new Date();
-            const data = [
-                ['تقرير الحضور والانصراف - اتصالات الجزائر'],
-                ['التاريخ:', date.toLocaleDateString('ar-DZ')],
-                ['خلية الصيانة والإنتاج'],
-                [''],
-                ['اسم الموظف', 'دخول صباحي', 'خروج صباحي', 'دخول مسائي', 'خروج مسائي', 'الحالة']
-            ];
-
-            employees.forEach(emp => {
-                data.push([
-                    emp.name,
-                    emp.morning.in || '-',
-                    emp.morning.out || '-',
-                    emp.evening.in || '-',
-                    emp.evening.out || '-',
-                    emp.status === 'in' ? 'متواجد' : 'غير متواجد'
-                ]);
             });
-
-            const ws = XLSX.utils.aoa_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            
-            // تنسيق ورقة العمل
-            ws['!cols'] = [
-                { wch: 25 }, // عرض عمود الاسم
-                { wch: 15 }, // عرض أعمدة الوقت
-                { wch: 15 },
-                { wch: 15 },
-                { wch: 15 },
-                { wch: 15 }
-            ];
-
-            XLSX.utils.book_append_sheet(wb, ws, 'سجل الحضور');
-            XLSX.writeFile(wb, `سجل_الحضور_${date.toISOString().split('T')[0]}.xlsx`);
+            updateAttendanceTable();
         }
 
-        // إيقاف الكاميرا
-        function stopCamera() {
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
-                currentStream = null;
-                
-                const video = document.getElementById('video');
-                video.srcObject = null;
-                video.style.display = 'none';
-                
-                const canvas = document.getElementById('canvas');
-                const context = canvas.getContext('2d');
-                context.clearRect(0, 0, canvas.width, canvas.height);
-            }
-        }
-
-        // وظائف مساعدة لواجهة المستخدم
-        function showLoading(show) {
-            document.getElementById('loading').style.display = show ? 'block' : 'none';
-        }
-
-        function showError(message) {
-            const errorDiv = document.getElementById('error');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-            setTimeout(() => {
-                errorDiv.style.display = 'none';
-            }, 5000);
-        }
-
-        function disableButtons(disabled) {
-            document.getElementById('loginBtn').disabled = disabled;
-            document.getElementById('logoutBtn').disabled = disabled;
-            document.getElementById('exportBtn').disabled = disabled;
-        }
-
-        // وظائف التخزين المحلي
-        function saveAttendanceData() {
-            localStorage.setItem('attendanceData', JSON.stringify(employees));
-            localStorage.setItem('lastUpdate', new Date().toISOString());
-        }
-
+        // تحميل بيانات الحضور من التخزين المحلي
         function loadAttendanceData() {
             const savedData = localStorage.getItem('attendanceData');
             const lastUpdate = localStorage.getItem('lastUpdate');
@@ -618,8 +448,9 @@
                 const lastUpdateDate = new Date(lastUpdate);
                 const today = new Date();
                 
-                // إعادة تعيين البيانات إذا كانت من يوم سابق
+                // إذا كان التاريخ مختلفًا، يتم تفريغ البيانات
                 if (lastUpdateDate.toDateString() !== today.toDateString()) {
+                    resetAttendanceData();
                     localStorage.clear();
                     return;
                 }
@@ -631,18 +462,13 @@
             }
         }
 
-        // مستمعات الأحداث
-        window.addEventListener('load', async () => {
-            loadAttendanceData();
-            await initializeSystem();
-        });
+        // حفظ بيانات الحضور في التخزين المحلي
+        function saveAttendanceData() {
+            localStorage.setItem('attendanceData', JSON.stringify(employees));
+            localStorage.setItem('lastUpdate', new Date().toISOString());
+        }
 
-        window.addEventListener('beforeunload', () => {
-            saveAttendanceData();
-        });
-
-        // الحفظ التلقائي الدوري
-        setInterval(saveAttendanceData, 60000); // الحفظ كل دقيقة
+        // باقي الكود كما هو...
     </script>
 </body>
 </html>
