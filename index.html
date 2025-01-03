@@ -258,7 +258,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <script>
-        // Employee data
+        // بيانات الموظفين
         const employees = [
             { name: "مكاوي بلعيد", frenchName: "Mekawi_Belaid", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
             { name: "بوعكة بغدادي", frenchName: "Bouaka_Baghdadi", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
@@ -272,21 +272,21 @@
             { name: "محاري مروان", frenchName: "Mahari_Marouane", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" }
         ];
 
-        // Global variables
+        // متغيرات عامة
         let isInitialized = false;
         let isProcessing = false;
         let currentStream = null;
         let labeledFaceDescriptors = null;
         let faceMatcher = null;
 
-        // Check browser support
+        // التحقق من دعم المتصفح
         function checkBrowserSupport() {
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 throw new Error('متصفحك لا يدعم استخدام الكاميرا. الرجاء استخدام متصفح حديث.');
             }
         }
 
-        // Initialize system
+        // تهيئة النظام
         async function initializeSystem() {
             if (isInitialized) return;
 
@@ -312,7 +312,7 @@
             }
         }
 
-        // Load face detection models
+        // تحميل نماذج التعرف على الوجوه
         async function loadModels() {
             const modelPath = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
             try {
@@ -326,7 +326,7 @@
             }
         }
 
-        // Train system on employee faces
+        // تدريب النظام على صور الموظفين
         async function trainEmployeeFaces() {
             try {
                 labeledFaceDescriptors = await Promise.all(
@@ -355,7 +355,7 @@
             }
         }
 
-        // Start attendance process
+        // بدء عملية تسجيل الحضور
         async function startAttendance(type) {
             if (isProcessing) return;
             if (!isInitialized) await initializeSystem();
@@ -377,7 +377,7 @@
             }
         }
 
-        // Countdown timer
+        // عداد التنازلي
         async function startCountdown() {
             const countdown = document.getElementById('countdown');
             countdown.style.display = 'flex';
@@ -390,7 +390,7 @@
             countdown.style.display = 'none';
         }
 
-        // Start camera
+        // بدء الكاميرا
         async function startCamera() {
             const video = document.getElementById('video');
             
@@ -414,7 +414,7 @@
             }
         }
 
-        // Process attendance
+        // معالجة تسجيل الحضور
         async function processAttendance(type) {
             const video = document.getElementById('video');
             const canvas = document.getElementById('canvas');
@@ -433,7 +433,7 @@
                     throw new Error('لم يتم العثور على وجه واضح - الرجاء المحاولة مجددا');
                 }
                 
-                // Add timeout handling
+                // إضافة مهلة للتعرف على الوجه
                 const timeoutPromise = new Promise((_, reject) => {
                     setTimeout(() => reject(new Error('انتهت مهلة التعرف على الوجه')), 10000);
                 });
@@ -447,21 +447,21 @@
                     throw new Error('لم يتم التعرف على الموظف');
                 }
                 
-                // Update attendance record
+                // تحديث سجل الحضور
                 const employee = employees.find(emp => emp.name === match.label);
                 const now = new Date();
                 const period = now.getHours() < 12 ? 'morning' : 'evening';
                 
-                // Validate attendance record
+                // التحقق من صحة سجل الحضور
                 validateAttendanceRecord(employee, period, type);
                 
                 employee[period][type] = now.toLocaleTimeString('ar-DZ');
                 employee.status = type;
                 
-                // Update UI
+                // تحديث واجهة المستخدم
                 updateAttendanceTable();
                 
-                // Check if last employee
+                // التحقق من آخر موظف
                 if (type === 'out' && period === 'evening') {
                     checkLastEmployee();
                 }
@@ -472,23 +472,23 @@
             }
         }
 
-        // Validate attendance record
+        // التحقق من صحة سجل الحضور
         function validateAttendanceRecord(employee, period, type) {
             const now = new Date();
             const hour = now.getHours();
             const dayOfWeek = now.getDay();
 
-            // Check working days
+            // التحقق من أيام العمل
             if (dayOfWeek === 5 || dayOfWeek === 6) {
                 throw new Error('لا يمكن تسجيل الحضور في عطلة نهاية الأسبوع');
             }
 
-            // Check working hours
+            // التحقق من ساعات العمل
             if (hour < 7 || hour > 17) {
                 throw new Error('خارج ساعات العمل المسموح بها (7:00 - 17:00)');
             }
 
-            // Validate morning/evening periods
+            // التحقق من الفترات الصباحية والمسائية
             if (period === 'morning' && hour >= 12) {
                 throw new Error('لا يمكن تسجيل الدخول الصباحي بعد الظهر');
             }
@@ -500,7 +500,7 @@
             return true;
         }
 
-        // Update attendance table
+        // تحديث جدول الحضور
         function updateAttendanceTable() {
             const tbody = document.querySelector('#attendanceTable tbody');
             tbody.innerHTML = employees.map(emp => `
@@ -515,12 +515,12 @@
             `).join('');
         }
 
-        // Format period display
+        // تنسيق عرض الفترة
         function formatPeriod(period) {
             return `${period.in || '-'} / ${period.out || '-'}`;
         }
 
-        // Check last employee
+        // التحقق من آخر موظف
         function checkLastEmployee() {
             const allOut = employees.every(emp => emp.status === 'out');
             if (allOut) {
@@ -529,7 +529,7 @@
             }
         }
 
-        // Export to Excel
+        // تصدير إلى Excel
         function exportToExcel() {
             const date = new Date();
             const data = [
@@ -554,10 +554,10 @@
             const ws = XLSX.utils.aoa_to_sheet(data);
             const wb = XLSX.utils.book_new();
             
-            // Style the worksheet
+            // تنسيق ورقة العمل
             ws['!cols'] = [
-                { wch: 25 }, // Name column width
-                { wch: 15 }, // Time columns width
+                { wch: 25 }, // عرض عمود الاسم
+                { wch: 15 }, // عرض أعمدة الوقت
                 { wch: 15 },
                 { wch: 15 },
                 { wch: 15 },
@@ -568,7 +568,7 @@
             XLSX.writeFile(wb, `سجل_الحضور_${date.toISOString().split('T')[0]}.xlsx`);
         }
 
-        // Stop camera
+        // إيقاف الكاميرا
         function stopCamera() {
             if (currentStream) {
                 currentStream.getTracks().forEach(track => track.stop());
@@ -584,7 +584,7 @@
             }
         }
 
-        // UI helper functions
+        // وظائف مساعدة لواجهة المستخدم
         function showLoading(show) {
             document.getElementById('loading').style.display = show ? 'block' : 'none';
         }
@@ -604,7 +604,7 @@
             document.getElementById('exportBtn').disabled = disabled;
         }
 
-        // Local storage functions
+        // وظائف التخزين المحلي
         function saveAttendanceData() {
             localStorage.setItem('attendanceData', JSON.stringify(employees));
             localStorage.setItem('lastUpdate', new Date().toISOString());
@@ -618,7 +618,7 @@
                 const lastUpdateDate = new Date(lastUpdate);
                 const today = new Date();
                 
-                // Reset data if it's from a previous day
+                // إعادة تعيين البيانات إذا كانت من يوم سابق
                 if (lastUpdateDate.toDateString() !== today.toDateString()) {
                     localStorage.clear();
                     return;
@@ -631,7 +631,7 @@
             }
         }
 
-        // Event listeners
+        // مستمعات الأحداث
         window.addEventListener('load', async () => {
             loadAttendanceData();
             await initializeSystem();
@@ -641,8 +641,8 @@
             saveAttendanceData();
         });
 
-        // Periodic auto-save
-        setInterval(saveAttendanceData, 60000); // Save every minute
+        // الحفظ التلقائي الدوري
+        setInterval(saveAttendanceData, 60000); // الحفظ كل دقيقة
     </script>
 </body>
 </html>
