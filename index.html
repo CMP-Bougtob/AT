@@ -213,7 +213,7 @@
 <body>
     <div class="container">
         <header class="header">
-            <img src="AT/images/logo.png" alt="شعار اتصالات الجزائر" class="logo">
+            <img src="images/logo.png" alt="شعار اتصالات الجزائر" class="logo"> <!-- تحديث مسار الشعار -->
             <h1>نظام تسجيل الدخول والخروج - خلية الصيانة والإنتاج</h1>
         </header>
 
@@ -314,7 +314,7 @@
 
         // تحميل نماذج التعرف على الوجوه
         async function loadModels() {
-            const modelPath = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
+            const modelPath = 'models'; // المسار المحلي للموديلات
             try {
                 await Promise.all([
                     faceapi.nets.tinyFaceDetector.loadFromUri(modelPath),
@@ -331,7 +331,7 @@
             try {
                 labeledFaceDescriptors = await Promise.all(
                     employees.map(async employee => {
-                        const imgUrl = `AT/images/${employee.frenchName}.jpg`;
+                        const imgUrl = `images/${employee.frenchName}.jpg`; // المسار المحلي للصور
                         console.log(`جاري تحميل صورة الموظف: ${employee.frenchName}`);
                         const img = await faceapi.fetchImage(imgUrl);
                         const detection = await faceapi.detectSingleFace(img)
