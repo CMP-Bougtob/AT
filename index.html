@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام تسجيل الدخول والخروج</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Color Scheme */
+        :root {
+            --background-color: #f4f4f9;
+            --text-color: #333;
+            --button-login-bg: #28a745;
+            --button-logout-bg: #dc3545;
+            --table-header-bg: #007bff;
+            --alternate-row-bg: #e9e9f0;
+            --border-color: #ccc;
+        }
+
+        /* General Styles */
+        body {
+            font-family: 'Cairo', Arial, sans-serif;
+            text-align: right;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            direction: rtl;
+        }
+
+        /* Header */
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .logo {
+            display: block;
+            margin: 20px auto;
+            width: 150px;
+        }
+
+        /* Buttons */
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        .btn-login {
+            background-color: var(--button-login-bg);
+            color: white;
+            margin-right: 10px;
+        }
+
+        .btn-logout {
+            background-color: var(--button-logout-bg);
+            color: white;
+        }
+
+        /* Video */
+        video {
+            display: block;
+            margin: 20px auto;
+            max-width: 400px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            background-color: black;
+        }
+
+        /* Table */
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        th {
+            background-color: var(--table-header-bg);
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: var(--alternate-row-bg);
+        }
+
+        .status-in {
+            color: green;
+        }
+
+        .status-out {
+            color: red;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+
+            video {
+                max-width: 100%;
+            }
+
+            table {
+                width: 100%;
+            }
+        }
+    </style>
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <img src="images/logo.png" alt="شعار الشركة" class="logo">
+    <h1>نظام تسجيل الدخول والخروج - خلية الصيانة والإنتاج</h1>
+    <div style="display: flex; justify-content: center;">
+        <button class="btn-login" onclick="openCamera('in')">تسجيل الدخول</button>
+        <button class="btn-logout" onclick="openCamera('out')">تسجيل الخروج</button>
+    </div>
+    <video id="video" autoplay playsinline></video>
+    <table id="attendanceTable">
+        <thead>
+            <tr>
+                <th>اسم الموظف</th>
+                <th>الفترة الصباحية</th>
+                <th>الفترة المسائية</th>
+                <th>الحالة</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Data will be populated here -->
+        </tbody>
+    </table>
+    <button onclick="exportToExcel()" style="display: block; margin: 20px auto;">استخراج ملف Excel</button>
+
+    <script>
+        // بيانات الموظفين
+        const employees = [
+            { name: "مكاوي بلعيد", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "بوعكة بغدادي", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "سعيدي محمد", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "خيلوف عمر فاروق", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "توتاي حمزة", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "صحراوي شرف الدين", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "مقدم محمد أمين", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "عزاوي حاج", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "بقافلة خيرة", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "محاري مروان", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "عمريو عبد القادر", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" }
+        ];
+
+        let currentStream = null;
+        let isCameraOpen = false;
+        let labeledFaceDescriptors = null;
+
+        // تحميل نماذج التعرف على الوجه
+        async function loadModels() {
+            try {
+                await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+                await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
+                await faceapi.nets.faceRecognitionNet.loadFromUri('/models');
+            } catch (error) {
+                console.error("حدث خطأ أثناء تحميل النماذج:", error);
+                alert("تعذر تحميل النماذج. يرجى التحقق من المسار.");
+            }
+        }
+
+        // تحميل صور الموظفين وتدريب النموذج
+        async function loadEmployeeImages() {
+            try {
+                const labels = employees.map(emp => emp.name);
+                labeledFaceDescriptors = await Promise.all(
+                    labels.map(async label => {
+                        const imgUrl = `images/${label}.jpg`; // مسار الصور
+                        const img = await faceapi.fetchImage(imgUrl);
+                        const detections = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
+                        return new faceapi.LabeledFaceDescriptors(label, [detections.descriptor]);
+                    })
+                );
+            } catch (error) {
+                console.error("حدث خطأ أثناء تحميل صور الموظفين:", error);
+                alert("تعذر تحميل صور الموظفين. يرجى التحقق من المسار.");
+            }
+        }
+
+        // فتح الكاميرا
+        async function openCamera(type) {
+            const video = document.getElementById('video');
+
+            if (isCameraOpen) {
+                alert("الكاميرا مفتوحة بالفعل.");
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'user' // الكاميرا الأمامية
+                    }
+                });
+                video.srcObject = stream;
+                currentStream = stream;
+                isCameraOpen = true;
+
+                await loadModels();
+                await loadEmployeeImages();
+                detectFaces(type);
+            } catch (error) {
+                console.error("حدث خطأ أثناء محاولة فتح الكاميرا:", error);
+                alert("تعذر فتح الكاميرا. يرجى التأكد من السماح بالوصول إلى الكاميرا.");
+            }
+        }
+
+        // اكتشاف الوجوه
+        async function detectFaces(type) {
+            const video = document.getElementById('video');
+            const canvas = faceapi.createCanvasFromMedia(video);
+            document.body.append(canvas);
+            const displaySize = { width: video.width, height: video.height };
+            faceapi.matchDimensions(canvas, displaySize);
+
+            const faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.6);
+
+            setInterval(async () => {
+                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+                    .withFaceLandmarks()
+                    .withFaceDescriptors();
+                const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+                faceapi.draw.drawDetections(canvas, resizedDetections);
+
+                const results = resizedDetections.map(d => faceMatcher.findBestMatch(d.descriptor));
+                results.forEach((result, i) => {
+                    const box = resizedDetections[i].detection.box;
+                    const drawBox = new faceapi.draw.DrawBox(box, { label: result.toString() });
+                    drawBox.draw(canvas);
+
+                    if (result.label !== "unknown") {
+                        const employee = employees.find(emp => emp.name === result.label);
+                        if (employee) {
+                            const now = new Date();
+                            const time = now.toLocaleTimeString();
+                            const period = getCurrentPeriod(now);
+
+                            if (type === 'in') {
+                                employee[period].in = time;
+                                employee.status = 'in';
+                            } else {
+                                employee[period].out = time;
+                                employee.status = 'out';
+                                if (period === 'evening') {
+                                    checkLastEmployee();
+                                }
+                            }
+                            renderTable();
+                            stopCamera();
+                        }
+                    }
+                });
+            }, 100);
+        }
+
+        // تحديد الفترة الحالية (صباحية أو مسائية)
+        function getCurrentPeriod(now) {
+            const hour = now.getHours();
+            return (hour >= 8 && hour < 12) ? 'morning' : 'evening';
+        }
+
+        // إيقاف الكاميرا
+        function stopCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                isCameraOpen = false;
+            }
+        }
+
+        // التحقق من خروج آخر موظف في الفترة المسائية
+        function checkLastEmployee() {
+            const allOut = employees.every(emp => emp.status === "out");
+            if (allOut) {
+                alert("تم خروج آخر موظف في الفترة المسائية. سيتم استخراج ملف اليوم.");
+                exportToExcel();
+            }
+        }
+
+        // استخراج ملف Excel
+        function exportToExcel() {
+            const data = [
+                ["اسم الموظف", "الدخول الصباحي", "الخروج الصباحي", "الدخول المسائي", "الخروج المسائي"]
+            ];
+            employees.forEach(emp => {
+                data.push([
+                    emp.name,
+                    emp.morning.in || "-",
+                    emp.morning.out || "-",
+                    emp.evening.in || "-",
+                    emp.evening.out || "-"
+                ]);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Feuille de présence");
+            XLSX.writeFile(wb, "feuille_de_presence.xlsx");
+        }
+
+        // عرض الجدول
+        function renderTable() {
+            const tbody = document.querySelector("#attendanceTable tbody");
+            tbody.innerHTML = employees.map(employee => `
+                <tr>
+                    <td>${employee.name}</td>
+                    <td>${employee.morning.in || "-"} / ${employee.morning.out || "-"}</td>
+                    <td>${employee.evening.in || "-"} / ${employee.evening.out || "-"}</td>
+                    <td class="status-${employee.status}">${employee.status === "in" ? "داخل" : "خارج"}</td>
+                </tr>
+            `).join("");
+        }
+
+        // عرض الجدول عند تحميل الصفحة
+        renderTable();
+    </script>
+</body>
+</html>
