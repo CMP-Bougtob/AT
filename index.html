@@ -224,14 +224,18 @@
 
             showLoading(true);
             try {
-                // تحميل النماذج
+                console.log("جاري تحميل النماذج...");
                 await loadModels();
-                // تدريب النظام على صور الموظفين
+                console.log("تم تحميل النماذج بنجاح.");
+
+                console.log("جاري تدريب النظام على صور الموظفين...");
                 await trainEmployeeFaces();
+                console.log("تم تدريب النظام بنجاح.");
                 
                 isInitialized = true;
                 updateAttendanceTable();
             } catch (error) {
+                console.error("فشل في تهيئة النظام:", error);
                 showError('فشل في تهيئة النظام: ' + error.message);
             } finally {
                 showLoading(false);
@@ -257,6 +261,7 @@
                 labeledFaceDescriptors = await Promise.all(
                     employees.map(async employee => {
                         const imgUrl = `images/${employee.frenchName}.jpg`; // استخدام الأسماء الفرنسية مع شرطة سفلية
+                        console.log(`جاري تحميل صورة الموظف: ${employee.frenchName}`);
                         const img = await faceapi.fetchImage(imgUrl);
                         const detection = await faceapi.detectSingleFace(img)
                             .withFaceLandmarks()
@@ -291,6 +296,7 @@
                 await startCamera();
                 await processAttendance(type);
             } catch (error) {
+                console.error("فشل في تسجيل الحضور:", error);
                 showError(error.message);
             } finally {
                 isProcessing = false;
