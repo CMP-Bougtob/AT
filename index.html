@@ -256,7 +256,8 @@
             try {
                 labeledFaceDescriptors = await Promise.all(
                     employees.map(async employee => {
-                        const img = await faceapi.fetchImage(`images/${employee.name}.jpg`);
+                        const imgUrl = `images/${encodeURIComponent(employee.name)}.jpg`;
+                        const img = await faceapi.fetchImage(imgUrl);
                         const detection = await faceapi.detectSingleFace(img)
                             .withFaceLandmarks()
                             .withFaceDescriptor();
