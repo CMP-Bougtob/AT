@@ -213,7 +213,7 @@
 <body>
     <div class="container">
         <header class="header">
-            <img src="images/logo.png" alt="شعار اتصالات الجزائر" class="logo">
+            <img src="AT/images/logo.png" alt="شعار اتصالات الجزائر" class="logo">
             <h1>نظام تسجيل الدخول والخروج - خلية الصيانة والإنتاج</h1>
         </header>
 
@@ -331,7 +331,7 @@
             try {
                 labeledFaceDescriptors = await Promise.all(
                     employees.map(async employee => {
-                        const imgUrl = `${employee.frenchName}.jpg`;
+                        const imgUrl = `AT/images/${employee.frenchName}.jpg`;
                         console.log(`جاري تحميل صورة الموظف: ${employee.frenchName}`);
                         const img = await faceapi.fetchImage(imgUrl);
                         const detection = await faceapi.detectSingleFace(img)
