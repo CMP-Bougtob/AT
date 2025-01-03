@@ -213,7 +213,7 @@
 <body>
     <div class="container">
         <header class="header">
-            <img src="images/logo.png" alt="شعار اتصالات الجزائر" class="logo"> <!-- تحديث مسار الشعار -->
+            <img src="./images/logo.png" alt="شعار اتصالات الجزائر" class="logo">
             <h1>نظام تسجيل الدخول والخروج - خلية الصيانة والإنتاج</h1>
         </header>
 
@@ -314,10 +314,10 @@
 
         // تحميل نماذج التعرف على الوجوه
         async function loadModels() {
-            const modelPath = 'models'; // المسار المحلي للموديلات
+            const modelPath = './models'; // المسار النسبي للموديلات
             try {
                 await Promise.all([
-                    faceapi.nets.tinyFaceDetector.loadFromUri(modelPath),
+                    faceapi.nets.ssdMobilenetv1.loadFromUri(modelPath), // تحميل SsdMobilenetv1
                     faceapi.nets.faceLandmark68Net.loadFromUri(modelPath),
                     faceapi.nets.faceRecognitionNet.loadFromUri(modelPath)
                 ]);
@@ -331,10 +331,10 @@
             try {
                 labeledFaceDescriptors = await Promise.all(
                     employees.map(async employee => {
-                        const imgUrl = `images/${employee.frenchName}.jpg`; // المسار المحلي للصور
+                        const imgUrl = `./images/${employee.frenchName}.jpg`; // المسار النسبي للصور
                         console.log(`جاري تحميل صورة الموظف: ${employee.frenchName}`);
                         const img = await faceapi.fetchImage(imgUrl);
-                        const detection = await faceapi.detectSingleFace(img)
+                        const detection = await faceapi.detectSingleFace(img, new faceapi.SsdMobilenetv1Options())
                             .withFaceLandmarks()
                             .withFaceDescriptor();
                             
@@ -425,7 +425,7 @@
                     throw new Error('الكاميرا غير متصلة');
                 }
 
-                const detection = await faceapi.detectSingleFace(video)
+                const detection = await faceapi.detectSingleFace(video, new faceapi.SsdMobilenetv1Options())
                     .withFaceLandmarks()
                     .withFaceDescriptor();
                 
