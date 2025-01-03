@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Permissions-Policy" content="interest-cohort=()">
     <title>نظام تسجيل الدخول والخروج - اتصالات الجزائر</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -14,21 +15,33 @@
             --border-color: #dee2e6;
         }
 
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
             font-family: 'Cairo', sans-serif;
             background-color: var(--bg-color);
             margin: 0;
             padding: 20px;
+            min-height: 100vh;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
+            padding: 0 15px;
         }
 
         .header {
             text-align: center;
             margin-bottom: 2rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         .logo {
@@ -50,7 +63,8 @@
             border-radius: 4px;
             font-weight: 600;
             cursor: pointer;
-            transition: opacity 0.2s;
+            transition: all 0.3s ease;
+            font-family: 'Cairo', sans-serif;
         }
 
         .btn:disabled {
@@ -68,17 +82,24 @@
             color: white;
         }
 
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
         .video-container {
             max-width: 640px;
-            margin: 0 auto;
+            margin: 0 auto 2rem;
             position: relative;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         #video {
             width: 100%;
-            border-radius: 8px;
             display: none;
-            background-color: #000;
         }
 
         #canvas {
@@ -92,8 +113,9 @@
         .table-container {
             overflow-x: auto;
             margin: 2rem 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background: white;
             border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         table {
@@ -118,20 +140,35 @@
             background-color: rgba(0,0,0,0.02);
         }
 
-        .status-in { color: var(--success-color); }
-        .status-out { color: var(--danger-color); }
+        .status-in { 
+            color: var(--success-color);
+            font-weight: 600;
+        }
+        
+        .status-out { 
+            color: var(--danger-color);
+            font-weight: 600;
+        }
 
         .loading {
             display: none;
             text-align: center;
             margin: 1rem 0;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         .error {
+            display: none;
             color: var(--danger-color);
             text-align: center;
             margin: 1rem 0;
-            display: none;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         @media (max-width: 768px) {
@@ -145,14 +182,38 @@
             
             th, td {
                 padding: 0.5rem;
+                font-size: 0.9rem;
             }
+
+            .header h1 {
+                font-size: 1.25rem;
+            }
+        }
+
+        .countdown {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 2rem;
+            border-radius: 50%;
+            font-size: 2rem;
+            font-weight: bold;
+            width: 100px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            display: none;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header class="header">
-            <img src="images/logo.png" alt="شعار اتصالات الجزائر" class="logo">
+            <img src="logo.png" alt="شعار اتصالات الجزائر" class="logo">
             <h1>نظام تسجيل الدخول والخروج - خلية الصيانة والإنتاج</h1>
         </header>
 
@@ -167,6 +228,7 @@
 
         <div id="loading" class="loading">جاري التحميل...</div>
         <div id="error" class="error"></div>
+        <div id="countdown" class="countdown">3</div>
 
         <div class="video-container">
             <video id="video" autoplay playsinline></video>
@@ -192,12 +254,11 @@
         </button>
     </div>
 
-    <!-- المكتبات المطلوبة -->
-    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <script>
-        // بيانات الموظفين
+        // Employee data
         const employees = [
             { name: "مكاوي بلعيد", frenchName: "Mekawi_Belaid", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
             { name: "بوعكة بغدادي", frenchName: "Bouaka_Baghdadi", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
@@ -211,19 +272,28 @@
             { name: "محاري مروان", frenchName: "Mahari_Marouane", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" }
         ];
 
-        // متغيرات عامة للنظام
+        // Global variables
         let isInitialized = false;
         let isProcessing = false;
         let currentStream = null;
         let labeledFaceDescriptors = null;
         let faceMatcher = null;
 
-        // تهيئة النظام
+        // Check browser support
+        function checkBrowserSupport() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                throw new Error('متصفحك لا يدعم استخدام الكاميرا. الرجاء استخدام متصفح حديث.');
+            }
+        }
+
+        // Initialize system
         async function initializeSystem() {
             if (isInitialized) return;
 
             showLoading(true);
             try {
+                checkBrowserSupport();
+                
                 console.log("جاري تحميل النماذج...");
                 await loadModels();
                 console.log("تم تحميل النماذج بنجاح.");
@@ -242,25 +312,26 @@
             }
         }
 
-        // تحميل نماذج التعرف على الوجوه
+        // Load face detection models
         async function loadModels() {
+            const modelPath = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
             try {
                 await Promise.all([
-                    faceapi.nets.tinyFaceDetector.loadFromUri('models'),
-                    faceapi.nets.faceLandmark68Net.loadFromUri('models'),
-                    faceapi.nets.faceRecognitionNet.loadFromUri('models')
+                    faceapi.nets.tinyFaceDetector.loadFromUri(modelPath),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(modelPath),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(modelPath)
                 ]);
             } catch (error) {
                 throw new Error('فشل في تحميل نماذج التعرف على الوجوه');
             }
         }
 
-        // تدريب النظام على صور الموظفين
+        // Train system on employee faces
         async function trainEmployeeFaces() {
             try {
                 labeledFaceDescriptors = await Promise.all(
                     employees.map(async employee => {
-                        const imgUrl = `images/${employee.frenchName}.jpg`; // استخدام الأسماء الفرنسية مع شرطة سفلية
+                        const imgUrl = `${employee.frenchName}.jpg`;
                         console.log(`جاري تحميل صورة الموظف: ${employee.frenchName}`);
                         const img = await faceapi.fetchImage(imgUrl);
                         const detection = await faceapi.detectSingleFace(img)
@@ -272,7 +343,7 @@
                         }
                         
                         return new faceapi.LabeledFaceDescriptors(
-                            employee.name, // استخدام الأسماء العربية للتعرف على الوجوه
+                            employee.name,
                             [detection.descriptor]
                         );
                     })
@@ -284,7 +355,7 @@
             }
         }
 
-        // بدء عملية تسجيل الحضور
+        // Start attendance process
         async function startAttendance(type) {
             if (isProcessing) return;
             if (!isInitialized) await initializeSystem();
@@ -294,6 +365,7 @@
                 disableButtons(true);
                 
                 await startCamera();
+                await startCountdown();
                 await processAttendance(type);
             } catch (error) {
                 console.error("فشل في تسجيل الحضور:", error);
@@ -305,7 +377,20 @@
             }
         }
 
-        // تشغيل الكاميرا
+        // Countdown timer
+        async function startCountdown() {
+            const countdown = document.getElementById('countdown');
+            countdown.style.display = 'flex';
+            
+            for (let i = 3; i > 0; i--) {
+                countdown.textContent = i;
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            countdown.style.display = 'none';
+        }
+
+        // Start camera
         async function startCamera() {
             const video = document.getElementById('video');
             
@@ -318,121 +403,172 @@
                 currentStream = stream;
                 video.style.display = 'block';
                 
-                // انتظار تحميل الفيديو
                 await new Promise(resolve => video.onloadedmetadata = resolve);
                 await video.play();
                 
-                // تهيئة الكانفاس
                 const canvas = document.getElementById('canvas');
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
             } catch (error) {
-                throw new Error('فشل في تشغيل الكاميرا');
+                throw new Error('فشل في تشغيل الكاميرا - الرجاء التأكد من السماح باستخدام الكاميرا');
             }
         }
 
-        // معالجة تسجيل الحضور
+        // Process attendance
         async function processAttendance(type) {
             const video = document.getElementById('video');
             const canvas = document.getElementById('canvas');
             const context = canvas.getContext('2d');
             
-            // انتظار 3 ثواني للتقاط الصورة
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            
             try {
-                // التقاط الوجه
+                if (!video.srcObject) {
+                    throw new Error('الكاميرا غير متصلة');
+                }
+
                 const detection = await faceapi.detectSingleFace(video)
                     .withFaceLandmarks()
                     .withFaceDescriptor();
                 
                 if (!detection) {
-                    throw new Error('لم يتم العثور على وجه');
+                    throw new Error('لم يتم العثور على وجه واضح - الرجاء المحاولة مجددا');
                 }
                 
-                // مطابقة الوجه مع الموظفين
-                const match = faceMatcher.findBestMatch(detection.descriptor);
+                // Add timeout handling
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('انتهت مهلة التعرف على الوجه')), 10000);
+                });
+
+                const match = await Promise.race([
+                    faceMatcher.findBestMatch(detection.descriptor),
+                    timeoutPromise
+                ]);
                 
                 if (match.label === 'unknown') {
                     throw new Error('لم يتم التعرف على الموظف');
                 }
                 
-                // تحديث سجل الحضور
-                const employee = employees.find(emp => emp.name === match.label); // استخدام الأسماء العربية للمطابقة
+                // Update attendance record
+                const employee = employees.find(emp => emp.name === match.label);
                 const now = new Date();
                 const period = now.getHours() < 12 ? 'morning' : 'evening';
                 
-                employee[period][type] = now.toLocaleTimeString();
+                // Validate attendance record
+                validateAttendanceRecord(employee, period, type);
+                
+                employee[period][type] = now.toLocaleTimeString('ar-DZ');
                 employee.status = type;
                 
-                // تحديث الجدول
+                // Update UI
                 updateAttendanceTable();
                 
-                // التحقق من خروج آخر موظف
+                // Check if last employee
                 if (type === 'out' && period === 'evening') {
                     checkLastEmployee();
                 }
                 
-                alert(`تم تسجيل ${type === 'in' ? 'دخول' : 'خروج'} ${employee.name}`); // عرض الاسم العربي في التنبيه
+                alert(`تم تسجيل ${type === 'in' ? 'دخول' : 'خروج'} ${employee.name} بنجاح`);
             } catch (error) {
                 throw new Error('فشل في عملية التعرف: ' + error.message);
             }
         }
 
-        // تحديث جدول الحضور
+        // Validate attendance record
+        function validateAttendanceRecord(employee, period, type) {
+            const now = new Date();
+            const hour = now.getHours();
+            const dayOfWeek = now.getDay();
+
+            // Check working days
+            if (dayOfWeek === 5 || dayOfWeek === 6) {
+                throw new Error('لا يمكن تسجيل الحضور في عطلة نهاية الأسبوع');
+            }
+
+            // Check working hours
+            if (hour < 7 || hour > 17) {
+                throw new Error('خارج ساعات العمل المسموح بها (7:00 - 17:00)');
+            }
+
+            // Validate morning/evening periods
+            if (period === 'morning' && hour >= 12) {
+                throw new Error('لا يمكن تسجيل الدخول الصباحي بعد الظهر');
+            }
+
+            if (type === 'out' && !employee[period].in) {
+                throw new Error('يجب تسجيل الدخول قبل تسجيل الخروج');
+            }
+
+            return true;
+        }
+
+        // Update attendance table
         function updateAttendanceTable() {
             const tbody = document.querySelector('#attendanceTable tbody');
             tbody.innerHTML = employees.map(emp => `
                 <tr>
-                    <td>${emp.name}</td> <!-- عرض الاسم العربي -->
-                    <td>${formatPeriod(emp.morning)}</td>
-                    <td>${formatPeriod(emp.evening)}</td>
+                    <td>${emp.name}</td>
+                    <td dir="ltr">${formatPeriod(emp.morning)}</td>
+                    <td dir="ltr">${formatPeriod(emp.evening)}</td>
                     <td class="status-${emp.status}">
-                        ${emp.status === 'in' ? 'داخل' : 'خارج'}
+                        <strong>${emp.status === 'in' ? 'متواجد' : 'غير متواجد'}</strong>
                     </td>
                 </tr>
             `).join('');
         }
 
-        // تنسيق عرض الفترة
+        // Format period display
         function formatPeriod(period) {
             return `${period.in || '-'} / ${period.out || '-'}`;
         }
 
-        // التحقق من خروج آخر موظف
+        // Check last employee
         function checkLastEmployee() {
             const allOut = employees.every(emp => emp.status === 'out');
             if (allOut) {
-                alert('تم خروج آخر موظف. سيتم استخراج التقرير.');
+                alert('تم خروج آخر موظف. سيتم استخراج التقرير تلقائياً.');
                 exportToExcel();
             }
         }
 
-        // تصدير البيانات إلى Excel
+        // Export to Excel
         function exportToExcel() {
+            const date = new Date();
             const data = [
-                ['اسم الموظف', 'دخول صباحي', 'خروج صباحي', 'دخول مسائي', 'خروج مسائي']
+                ['تقرير الحضور والانصراف - اتصالات الجزائر'],
+                ['التاريخ:', date.toLocaleDateString('ar-DZ')],
+                ['خلية الصيانة والإنتاج'],
+                [''],
+                ['اسم الموظف', 'دخول صباحي', 'خروج صباحي', 'دخول مسائي', 'خروج مسائي', 'الحالة']
             ];
 
             employees.forEach(emp => {
                 data.push([
-                    emp.name, // استخدام الأسماء العربية في التقرير
+                    emp.name,
                     emp.morning.in || '-',
                     emp.morning.out || '-',
                     emp.evening.in || '-',
-                    emp.evening.out || '-'
+                    emp.evening.out || '-',
+                    emp.status === 'in' ? 'متواجد' : 'غير متواجد'
                 ]);
             });
 
             const ws = XLSX.utils.aoa_to_sheet(data);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'سجل الحضور');
             
-            const date = new Date().toISOString().split('T')[0];
-            XLSX.writeFile(wb, `سجل_الحضور_${date}.xlsx`);
+            // Style the worksheet
+            ws['!cols'] = [
+                { wch: 25 }, // Name column width
+                { wch: 15 }, // Time columns width
+                { wch: 15 },
+                { wch: 15 },
+                { wch: 15 },
+                { wch: 15 }
+            ];
+
+            XLSX.utils.book_append_sheet(wb, ws, 'سجل الحضور');
+            XLSX.writeFile(wb, `سجل_الحضور_${date.toISOString().split('T')[0]}.xlsx`);
         }
 
-        // إيقاف الكاميرا
+        // Stop camera
         function stopCamera() {
             if (currentStream) {
                 currentStream.getTracks().forEach(track => track.stop());
@@ -448,7 +584,7 @@
             }
         }
 
-        // وظائف مساعدة للواجهة
+        // UI helper functions
         function showLoading(show) {
             document.getElementById('loading').style.display = show ? 'block' : 'none';
         }
@@ -459,7 +595,7 @@
             errorDiv.style.display = 'block';
             setTimeout(() => {
                 errorDiv.style.display = 'none';
-            }, 3000);
+            }, 5000);
         }
 
         function disableButtons(disabled) {
@@ -468,8 +604,45 @@
             document.getElementById('exportBtn').disabled = disabled;
         }
 
-        // تهيئة النظام عند تحميل الصفحة
-        document.addEventListener('DOMContentLoaded', initializeSystem);
+        // Local storage functions
+        function saveAttendanceData() {
+            localStorage.setItem('attendanceData', JSON.stringify(employees));
+            localStorage.setItem('lastUpdate', new Date().toISOString());
+        }
+
+        function loadAttendanceData() {
+            const savedData = localStorage.getItem('attendanceData');
+            const lastUpdate = localStorage.getItem('lastUpdate');
+            
+            if (savedData && lastUpdate) {
+                const lastUpdateDate = new Date(lastUpdate);
+                const today = new Date();
+                
+                // Reset data if it's from a previous day
+                if (lastUpdateDate.toDateString() !== today.toDateString()) {
+                    localStorage.clear();
+                    return;
+                }
+                
+                const parsedData = JSON.parse(savedData);
+                employees.forEach((emp, index) => {
+                    Object.assign(emp, parsedData[index]);
+                });
+            }
+        }
+
+        // Event listeners
+        window.addEventListener('load', async () => {
+            loadAttendanceData();
+            await initializeSystem();
+        });
+
+        window.addEventListener('beforeunload', () => {
+            saveAttendanceData();
+        });
+
+        // Periodic auto-save
+        setInterval(saveAttendanceData, 60000); // Save every minute
     </script>
 </body>
 </html>
