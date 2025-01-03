@@ -199,16 +199,16 @@
     <script>
         // بيانات الموظفين
         const employees = [
-            { name: "مكاوي بلعيد", frenchName: "Mekawi Belaid", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "بوعكة بغدادي", frenchName: "Bouaka Baghdadi", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "سعيدي محمد", frenchName: "Saidi Mohamed", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "خيلوف عمر فاروق", frenchName: "Khilouf Omar Farouk", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "توتاي حمزة", frenchName: "Toutai Hamza", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "صحراوي شرف الدين", frenchName: "Sahraoui Cherif Eddine", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "مقدم محمد أمين", frenchName: "Mokadem Mohamed Amine", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "عزاوي حاج", frenchName: "Azzawi Hadj", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "بقافلة خيرة", frenchName: "Bekafla Kheira", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "محاري مروان", frenchName: "Mahari Marouane", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" }
+            { name: "مكاوي بلعيد", frenchName: "Mekawi_Belaid", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "بوعكة بغدادي", frenchName: "Bouaka_Baghdadi", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "سعيدي محمد", frenchName: "Saidi_Mohamed", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "خيلوف عمر فاروق", frenchName: "Khilouf_Omar_Farouk", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "توتاي حمزة", frenchName: "Toutai_Hamza", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "صحراوي شرف الدين", frenchName: "Sahraoui_Cherif_Eddine", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "مقدم محمد أمين", frenchName: "Mokadem_Mohamed_Amine", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "عزاوي حاج", frenchName: "Azzawi_Hadj", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "بقافلة خيرة", frenchName: "Bekafla_Kheira", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "محاري مروان", frenchName: "Mahari_Marouane", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" }
         ];
 
         // متغيرات عامة للنظام
@@ -256,14 +256,14 @@
             try {
                 labeledFaceDescriptors = await Promise.all(
                     employees.map(async employee => {
-                        const imgUrl = `images/${encodeURIComponent(employee.name)}.jpg`; // استخدام الأسماء العربية لتحميل الصور
+                        const imgUrl = `images/${employee.frenchName}.jpg`; // استخدام الأسماء الفرنسية مع شرطة سفلية
                         const img = await faceapi.fetchImage(imgUrl);
                         const detection = await faceapi.detectSingleFace(img)
                             .withFaceLandmarks()
                             .withFaceDescriptor();
                             
                         if (!detection) {
-                            throw new Error(`لم يتم العثور على وجه في صورة ${employee.name}`);
+                            throw new Error(`لم يتم العثور على وجه في صورة ${employee.frenchName}`);
                         }
                         
                         return new faceapi.LabeledFaceDescriptors(
@@ -352,7 +352,7 @@
                 }
                 
                 // تحديث سجل الحضور
-                const employee = employees.find(emp => emp.name === match.label);
+                const employee = employees.find(emp => emp.name === match.label); // استخدام الأسماء العربية للمطابقة
                 const now = new Date();
                 const period = now.getHours() < 12 ? 'morning' : 'evening';
                 
@@ -367,7 +367,7 @@
                     checkLastEmployee();
                 }
                 
-                alert(`تم تسجيل ${type === 'in' ? 'دخول' : 'خروج'} ${employee.frenchName}`); // عرض الاسم الفرنسي في التنبيه
+                alert(`تم تسجيل ${type === 'in' ? 'دخول' : 'خروج'} ${employee.name}`); // عرض الاسم العربي في التنبيه
             } catch (error) {
                 throw new Error('فشل في عملية التعرف: ' + error.message);
             }
@@ -378,7 +378,7 @@
             const tbody = document.querySelector('#attendanceTable tbody');
             tbody.innerHTML = employees.map(emp => `
                 <tr>
-                    <td>${emp.frenchName}</td> <!-- عرض الاسم الفرنسي -->
+                    <td>${emp.name}</td> <!-- عرض الاسم العربي -->
                     <td>${formatPeriod(emp.morning)}</td>
                     <td>${formatPeriod(emp.evening)}</td>
                     <td class="status-${emp.status}">
@@ -410,7 +410,7 @@
 
             employees.forEach(emp => {
                 data.push([
-                    emp.frenchName, // استخدام الأسماء الفرنسية في التقرير
+                    emp.name, // استخدام الأسماء العربية في التقرير
                     emp.morning.in || '-',
                     emp.morning.out || '-',
                     emp.evening.in || '-',
