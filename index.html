@@ -218,6 +218,57 @@
             justify-content: center;
             display: none;
         }
+
+        /* إضافة أنماط للنوافذ المنبثقة */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .modal button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .modal button.confirm {
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .modal button.cancel {
+            background-color: var(--danger-color);
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -234,7 +285,7 @@
             <button class="btn btn-logout" onclick="startAttendance('out')" id="logoutBtn">
                 تسجيل الخروج
             </button>
-            <button class="btn btn-holiday" onclick="setHoliday()" id="holidayBtn">
+            <button class="btn btn-holiday" onclick="startHolidayProcess()" id="holidayBtn">
                 تعيين عطلة
             </button>
         </div>
@@ -267,22 +318,35 @@
         </button>
     </div>
 
+    <!-- نافذة منبثقة لتحديد مدة العطلة -->
+    <div id="holidayModal" class="modal">
+        <h3>تعيين عطلة</h3>
+        <p id="holidayEmployeeName"></p>
+        <label for="startDate">من تاريخ:</label>
+        <input type="date" id="startDate" required>
+        <label for="endDate">إلى تاريخ:</label>
+        <input type="date" id="endDate" required>
+        <button class="confirm" onclick="confirmHoliday()">تأكيد</button>
+        <button class="cancel" onclick="closeHolidayModal()">إلغاء</button>
+    </div>
+    <div id="holidayModalOverlay" class="modal-overlay"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <script>
         // بيانات الموظفين
         const employees = [
-            { name: "مكاوي بلعيد", frenchName: "Mekawi_Belaid", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "بوعكة بغدادي", frenchName: "Bouaka_Baghdadi", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "سعيدي محمد", frenchName: "Saidi_Mohamed", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "خيلوف عمر فاروق", frenchName: "Khilouf_Omar_Farouk", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "توتاي حمزة", frenchName: "Toutai_Hamza", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "صحراوي شرف الدين", frenchName: "Sahraoui_Cherif_Eddine", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "مقدم محمد أمين", frenchName: "Mokadem_Mohamed_Amine", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "عزاوي حاج", frenchName: "Azzawi_Hadj", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "بقافلة خيرة", frenchName: "Bekafla_Kheira", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
-            { name: "محاري مروان", frenchName: "Mahari_Marouane", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" }
+            { name: "مكاوي بلعيد", frenchName: "Mekawi_Belaid", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null },
+            { name: "بوعكة بغدادي", frenchName: "Bouaka_Baghdadi", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null },
+            { name: "سعيدي محمد", frenchName: "Saidi_Mohamed", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null },
+            { name: "خيلوف عمر فاروق", frenchName: "Khilouf_Omar_Farouk", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null },
+            { name: "توتاي حمزة", frenchName: "Toutai_Hamza", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null },
+            { name: "صحراوي شرف الدين", frenchName: "Sahraoui_Cherif_Eddine", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null },
+            { name: "مقدم محمد أمين", frenchName: "Mokadem_Mohamed_Amine", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null },
+            { name: "عزاوي حاج", frenchName: "Azzawi_Hadj", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null },
+            { name: "بقافلة خيرة", frenchName: "Bekafla_Kheira", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null },
+            { name: "محاري مروان", frenchName: "Mahari_Marouane", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null }
         ];
 
         // متغيرات عامة
@@ -291,15 +355,106 @@
         let currentStream = null;
         let labeledFaceDescriptors = null;
         let faceMatcher = null;
+        let selectedEmployeeForHoliday = null; // الموظف المحدد للعطلة
 
-        // وظيفة تعيين عطلة
-        function setHoliday() {
-            employees.forEach(emp => {
-                emp.status = "holiday"; // تعيين الحالة إلى "عطلة"
-                emp.morning.in = emp.morning.out = emp.evening.in = emp.evening.out = null; // إعادة تعيين الأوقات
-            });
+        // فتح نافذة العطلة
+        function openHolidayModal(employee) {
+            selectedEmployeeForHoliday = employee;
+            document.getElementById('holidayEmployeeName').textContent = `تعيين عطلة لـ: ${employee.name}`;
+            document.getElementById('holidayModal').style.display = 'block';
+            document.getElementById('holidayModalOverlay').style.display = 'block';
+        }
+
+        // إغلاق نافذة العطلة
+        function closeHolidayModal() {
+            document.getElementById('holidayModal').style.display = 'none';
+            document.getElementById('holidayModalOverlay').style.display = 'none';
+            selectedEmployeeForHoliday = null;
+        }
+
+        // تأكيد العطلة
+        function confirmHoliday() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            if (!startDate || !endDate) {
+                alert("الرجاء تحديد تاريخي بداية ونهاية العطلة.");
+                return;
+            }
+
+            if (new Date(startDate) > new Date(endDate)) {
+                alert("تاريخ البداية يجب أن يكون قبل تاريخ النهاية.");
+                return;
+            }
+
+            selectedEmployeeForHoliday.holiday = { start: startDate, end: endDate };
+            selectedEmployeeForHoliday.status = "holiday";
             updateAttendanceTable();
-            alert("تم تعيين اليوم كعطلة لجميع الموظفين.");
+            closeHolidayModal();
+            alert(`تم تعيين عطلة لـ ${selectedEmployeeForHoliday.name} من ${startDate} إلى ${endDate}`);
+        }
+
+        // بدء عملية تعيين العطلة
+        async function startHolidayProcess() {
+            if (isProcessing) return;
+            if (!isInitialized) await initializeSystem();
+
+            try {
+                isProcessing = true;
+                disableButtons(true);
+                
+                await startCamera();
+                await startCountdown();
+                await processHoliday();
+            } catch (error) {
+                console.error("فشل في تعيين العطلة:", error);
+                showError(error.message);
+            } finally {
+                isProcessing = false;
+                disableButtons(false);
+                stopCamera();
+            }
+        }
+
+        // معالجة تعيين العطلة
+        async function processHoliday() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+            
+            try {
+                if (!video.srcObject) {
+                    throw new Error('الكاميرا غير متصلة');
+                }
+
+                const detection = await faceapi.detectSingleFace(video, new faceapi.SsdMobilenetv1Options())
+                    .withFaceLandmarks()
+                    .withFaceDescriptor();
+                
+                if (!detection) {
+                    throw new Error('لم يتم العثور على وجه واضح - الرجاء المحاولة مجددا');
+                }
+                
+                // إضافة مهلة للتعرف على الوجه
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('انتهت مهلة التعرف على الوجه')), 10000);
+                });
+
+                const match = await Promise.race([
+                    faceMatcher.findBestMatch(detection.descriptor),
+                    timeoutPromise
+                ]);
+                
+                if (match.label === 'unknown') {
+                    throw new Error('لم يتم التعرف على الموظف');
+                }
+                
+                // العثور على الموظف
+                const employee = employees.find(emp => emp.name === match.label);
+                openHolidayModal(employee);
+            } catch (error) {
+                throw new Error('فشل في عملية التعرف: ' + error.message);
+            }
         }
 
         // التحقق من دعم المتصفح
