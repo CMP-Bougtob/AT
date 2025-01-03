@@ -1,1 +1,468 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام تسجيل الدخول والخروج - اتصالات الجزائر</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --bg-color: #f4f4f9;
+            --border-color: #dee2e6;
+        }
 
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 1rem;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-login {
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .btn-logout {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .video-container {
+            max-width: 640px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        #video {
+            width: 100%;
+            border-radius: 8px;
+            display: none;
+            background-color: #000;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin: 2rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: rgba(0,0,0,0.02);
+        }
+
+        .status-in { color: var(--success-color); }
+        .status-out { color: var(--danger-color); }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        .error {
+            color: var(--danger-color);
+            text-align: center;
+            margin: 1rem 0;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+            
+            th, td {
+                padding: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <img src="images/logo.png" alt="شعار اتصالات الجزائر" class="logo">
+            <h1>نظام تسجيل الدخول والخروج - خلية الصيانة والإنتاج</h1>
+        </header>
+
+        <div class="controls">
+            <button class="btn btn-login" onclick="startAttendance('in')" id="loginBtn">
+                تسجيل الدخول
+            </button>
+            <button class="btn btn-logout" onclick="startAttendance('out')" id="logoutBtn">
+                تسجيل الخروج
+            </button>
+        </div>
+
+        <div id="loading" class="loading">جاري التحميل...</div>
+        <div id="error" class="error"></div>
+
+        <div class="video-container">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <div class="table-container">
+            <table id="attendanceTable">
+                <thead>
+                    <tr>
+                        <th>اسم الموظف</th>
+                        <th>الفترة الصباحية</th>
+                        <th>الفترة المسائية</th>
+                        <th>الحالة</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <button class="btn" onclick="exportToExcel()" id="exportBtn" style="background-color: var(--primary-color); color: white; margin: 0 auto; display: block;">
+            استخراج التقرير
+        </button>
+    </div>
+
+    <!-- المكتبات المطلوبة -->
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <script>
+        // بيانات الموظفين
+        const employees = [
+            { name: "مكاوي بلعيد", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "بوعكة بغدادي", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "سعيدي محمد", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "خيلوف عمر فاروق", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "توتاي حمزة", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "صحراوي شرف الدين", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "مقدم محمد أمين", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "عزاوي حاج", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "بقافلة خيرة", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" },
+            { name: "محاري مروان", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out" }
+        ];
+
+        // متغيرات عامة للنظام
+        let isInitialized = false;
+        let isProcessing = false;
+        let currentStream = null;
+        let labeledFaceDescriptors = null;
+        let faceMatcher = null;
+
+        // تهيئة النظام
+        async function initializeSystem() {
+            if (isInitialized) return;
+
+            showLoading(true);
+            try {
+                // تحميل النماذج
+                await loadModels();
+                // تدريب النظام على صور الموظفين
+                await trainEmployeeFaces();
+                
+                isInitialized = true;
+                updateAttendanceTable();
+            } catch (error) {
+                showError('فشل في تهيئة النظام: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // تحميل نماذج التعرف على الوجوه
+        async function loadModels() {
+            try {
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri('models'),
+                    faceapi.nets.faceLandmark68Net.loadFromUri('models'),
+                    faceapi.nets.faceRecognitionNet.loadFromUri('models')
+                ]);
+            } catch (error) {
+                throw new Error('فشل في تحميل نماذج التعرف على الوجوه');
+            }
+        }
+
+        // تدريب النظام على صور الموظفين
+        async function trainEmployeeFaces() {
+            try {
+                labeledFaceDescriptors = await Promise.all(
+                    employees.map(async employee => {
+                        const img = await faceapi.fetchImage(`images/${employee.name}.jpg`);
+                        const detection = await faceapi.detectSingleFace(img)
+                            .withFaceLandmarks()
+                            .withFaceDescriptor();
+                            
+                        if (!detection) {
+                            throw new Error(`لم يتم العثور على وجه في صورة ${employee.name}`);
+                        }
+                        
+                        return new faceapi.LabeledFaceDescriptors(
+                            employee.name,
+                            [detection.descriptor]
+                        );
+                    })
+                );
+                
+                faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.6);
+            } catch (error) {
+                throw new Error('فشل في تدريب النظام على صور الموظفين');
+            }
+        }
+
+        // بدء عملية تسجيل الحضور
+        async function startAttendance(type) {
+            if (isProcessing) return;
+            if (!isInitialized) await initializeSystem();
+
+            try {
+                isProcessing = true;
+                disableButtons(true);
+                
+                await startCamera();
+                await processAttendance(type);
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                isProcessing = false;
+                disableButtons(false);
+                stopCamera();
+            }
+        }
+
+        // تشغيل الكاميرا
+        async function startCamera() {
+            const video = document.getElementById('video');
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'user' }
+                });
+                
+                video.srcObject = stream;
+                currentStream = stream;
+                video.style.display = 'block';
+                
+                // انتظار تحميل الفيديو
+                await new Promise(resolve => video.onloadedmetadata = resolve);
+                await video.play();
+                
+                // تهيئة الكانفاس
+                const canvas = document.getElementById('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+            } catch (error) {
+                throw new Error('فشل في تشغيل الكاميرا');
+            }
+        }
+
+        // معالجة تسجيل الحضور
+        async function processAttendance(type) {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+            
+            // انتظار 3 ثواني للتقاط الصورة
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            try {
+                // التقاط الوجه
+                const detection = await faceapi.detectSingleFace(video)
+                    .withFaceLandmarks()
+                    .withFaceDescriptor();
+                
+                if (!detection) {
+                    throw new Error('لم يتم العثور على وجه');
+                }
+                
+                // مطابقة الوجه مع الموظفين
+                const match = faceMatcher.findBestMatch(detection.descriptor);
+                
+                if (match.label === 'unknown') {
+                    throw new Error('لم يتم التعرف على الموظف');
+                }
+                
+                // تحديث سجل الحضور
+                const employee = employees.find(emp => emp.name === match.label);
+                const now = new Date();
+                const period = now.getHours() < 12 ? 'morning' : 'evening';
+                
+                employee[period][type] = now.toLocaleTimeString();
+                employee.status = type;
+                
+                // تحديث الجدول
+                updateAttendanceTable();
+                
+                // التحقق من خروج آخر موظف
+                if (type === 'out' && period === 'evening') {
+                    checkLastEmployee();
+                }
+                
+                alert(`تم تسجيل ${type === 'in' ? 'دخول' : 'خروج'} ${employee.name}`);
+            } catch (error) {
+                throw new Error('فشل في عملية التعرف: ' + error.message);
+            }
+        }
+
+        // تحديث جدول الحضور
+        function updateAttendanceTable() {
+            const tbody = document.querySelector('#attendanceTable tbody');
+            tbody.innerHTML = employees.map(emp => `
+                <tr>
+                    <td>${emp.name}</td>
+                    <td>${formatPeriod(emp.morning)}</td>
+                    <td>${formatPeriod(emp.evening)}</td>
+                    <td class="status-${emp.status}">
+                        ${emp.status === 'in' ? 'داخل' : 'خارج'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // تنسيق عرض الفترة
+        function formatPeriod(period) {
+            return `${period.in || '-'} / ${period.out || '-'}`;
+        }
+
+        // التحقق من خروج آخر موظف
+        function checkLastEmployee() {
+            const allOut = employees.every(emp => emp.status === 'out');
+            if (allOut) {
+                alert('تم خروج آخر موظف. سيتم استخراج التقرير.');
+                exportToExcel();
+            }
+        }
+
+        // تصدير البيانات إلى Excel
+        function exportToExcel() {
+            const data = [
+                ['اسم الموظف', 'دخول صباحي', 'خروج صباحي', 'دخول مسائي', 'خروج مسائي']
+            ];
+
+            employees.forEach(emp => {
+                data.push([
+                    emp.name,
+                    emp.morning.in || '-',
+                    emp.morning.out || '-',
+                    emp.evening.in || '-',
+                    emp.evening.out || '-'
+                ]);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'سجل الحضور');
+            
+            const date = new Date().toISOString().split('T')[0];
+            XLSX.writeFile(wb, `سجل_الحضور_${date}.xlsx`);
+        }
+
+        // إيقاف الكاميرا
+        function stopCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+                
+                const video = document.getElementById('video');
+                video.srcObject = null;
+                video.style.display = 'none';
+                
+                const canvas = document.getElementById('canvas');
+                const context = canvas.getContext('2d');
+                context.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        // وظائف مساعدة للواجهة
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        function disableButtons(disabled) {
+            document.getElementById('loginBtn').disabled = disabled;
+            document.getElementById('logoutBtn').disabled = disabled;
+            document.getElementById('exportBtn').disabled = disabled;
+        }
+
+        // تهيئة النظام عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', initializeSystem);
+    </script>
+</body>
+</html>
