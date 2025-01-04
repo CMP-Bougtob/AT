@@ -334,7 +334,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <script>
+        // بيانات الموظفين
         let employees = [];
+
+        // متغيرات عامة
         let isInitialized = false;
         let isProcessing = false;
         let currentStream = null;
@@ -342,6 +345,7 @@
         let faceMatcher = null;
         let selectedEmployeeForHoliday = null;
 
+        // تحميل بيانات الموظفين من ملف data.json
         async function loadEmployees() {
             try {
                 const response = await fetch('./data.json');
@@ -353,10 +357,11 @@
             }
         }
 
+        // حفظ بيانات الموظفين في ملف data.json
         async function saveEmployees() {
             try {
                 const response = await fetch('./data.json', {
-                    method: 'PUT',
+                    method: 'PUT', // أو 'POST' حسب إعدادات الخادم
                     headers: {
                         'Content-Type': 'application/json'
                     },
@@ -372,12 +377,20 @@
             }
         }
 
+        // التحقق من دعم المتصفح للكاميرا
+        function checkBrowserSupport() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                throw new Error('متصفحك لا يدعم استخدام الكاميرا. الرجاء استخدام متصفح حديث.');
+            }
+        }
+
+        // تهيئة النظام
         async function initializeSystem() {
             if (isInitialized) return;
 
             showLoading(true);
             try {
-                checkBrowserSupport();
+                checkBrowserSupport(); // التحقق من دعم المتصفح
                 await loadModels();
                 await trainEmployeeFaces();
                 isInitialized = true;
@@ -390,6 +403,7 @@
             }
         }
 
+        // تحميل نماذج التعرف على الوجوه
         async function loadModels() {
             const modelPath = './models';
             try {
@@ -403,6 +417,7 @@
             }
         }
 
+        // تدريب النظام على صور الموظفين
         async function trainEmployeeFaces() {
             try {
                 labeledFaceDescriptors = await Promise.all(
@@ -430,6 +445,7 @@
             }
         }
 
+        // بدء عملية تسجيل الحضور
         async function startAttendance(type) {
             if (isProcessing) return;
             if (!isInitialized) await initializeSystem();
@@ -451,6 +467,7 @@
             }
         }
 
+        // عداد التنازلي
         async function startCountdown() {
             const countdown = document.getElementById('countdown');
             countdown.style.display = 'flex';
@@ -463,6 +480,7 @@
             countdown.style.display = 'none';
         }
 
+        // بدء الكاميرا
         async function startCamera() {
             const video = document.getElementById('video');
             
@@ -486,6 +504,7 @@
             }
         }
 
+        // معالجة تسجيل الحضور
         async function processAttendance(type) {
             const video = document.getElementById('video');
             const canvas = document.getElementById('canvas');
@@ -538,6 +557,7 @@
             }
         }
 
+        // التحقق من صحة سجل الحضور
         function validateAttendanceRecord(employee, period, type) {
             const now = new Date();
             const hour = now.getHours();
@@ -562,6 +582,7 @@
             return true;
         }
 
+        // تحديث جدول الحضور
         function updateAttendanceTable() {
             const tbody = document.querySelector('#attendanceTable tbody');
             tbody.innerHTML = employees.map(emp => `
@@ -576,10 +597,12 @@
             `).join('');
         }
 
+        // تنسيق عرض الفترة
         function formatPeriod(period) {
             return `${period.in || '-'} / ${period.out || '-'}`;
         }
 
+        // التحقق من آخر موظف
         function checkLastEmployee() {
             const allOut = employees.every(emp => emp.status === 'out');
             if (allOut) {
@@ -588,6 +611,7 @@
             }
         }
 
+        // تصدير إلى Excel
         function exportToExcel() {
             const date = new Date();
             const data = [
@@ -625,6 +649,7 @@
             XLSX.writeFile(wb, `سجل_الحضور_${date.toISOString().split('T')[0]}.xlsx`);
         }
 
+        // إيقاف الكاميرا
         function stopCamera() {
             if (currentStream) {
                 currentStream.getTracks().forEach(track => track.stop());
@@ -640,6 +665,7 @@
             }
         }
 
+        // وظائف مساعدة لواجهة المستخدم
         function showLoading(show) {
             document.getElementById('loading').style.display = show ? 'block' : 'none';
         }
@@ -660,6 +686,7 @@
             document.getElementById('exportBtn').disabled = disabled;
         }
 
+        // مستمعات الأحداث
         window.addEventListener('load', async () => {
             await loadEmployees();
             await initializeSystem();
@@ -669,7 +696,8 @@
             saveEmployees();
         });
 
-        setInterval(saveEmployees, 60000);
+        // الحفظ التلقائي الدوري
+        setInterval(saveEmployees, 60000); // الحفظ كل دقيقة
     </script>
 </body>
 </html>
