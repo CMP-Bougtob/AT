@@ -6,6 +6,10 @@
     <meta http-equiv="Permissions-Policy" content="interest-cohort=()">
     <title>نظام تسجيل الدخول والخروج - اتصالات الجزائر</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- إضافة مكتبات face-api.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/face-api.js/0.22.2/face-api.min.js"></script>
+    <!-- إضافة مكتبة XLSX -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -24,6 +28,9 @@
             </button>
             <button class="btn btn-holiday" onclick="startHolidayProcess()" id="holidayBtn">
                 تعيين عطلة
+            </button>
+            <button class="btn" onclick="exportToExcel()" id="exportBtn" style="background-color: var(--primary-color); color: white;">
+                استخراج التقرير
             </button>
         </div>
 
@@ -49,10 +56,6 @@
                 <tbody></tbody>
             </table>
         </div>
-
-        <button class="btn" onclick="exportToExcel()" id="exportBtn" style="background-color: var(--primary-color); color: white; margin: 0 auto; display: block;">
-            استخراج التقرير
-        </button>
     </div>
 
     <!-- نافذة منبثقة لتحديد مدة العطلة -->
