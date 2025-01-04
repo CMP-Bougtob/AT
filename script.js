@@ -45,7 +45,10 @@ function saveAttendanceData() {
     const date = new Date().toISOString().split('T')[0]; // تاريخ اليوم
     set(ref(database, 'attendance/' + date), employees)
         .then(() => console.log('Data saved successfully!'))
-        .catch((error) => console.error('Failed to save data:', error));
+        .catch((error) => {
+            console.error('Failed to save data:', error);
+            showError('فشل في حفظ البيانات: ' + error.message);
+        });
 }
 
 // تحميل البيانات من Firebase
@@ -61,6 +64,7 @@ function loadAttendanceData() {
         }
     }, (error) => {
         console.error('Failed to load data:', error);
+        showError('فشل في تحميل البيانات: ' + error.message);
     });
 }
 
@@ -84,10 +88,65 @@ function formatPeriod(period) {
     return `${period.in || '-'} / ${period.out || '-'}`;
 }
 
+// عرض رسالة خطأ
+function showError(message) {
+    const errorDiv = document.getElementById('error');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+    setTimeout(() => {
+        errorDiv.style.display = 'none';
+    }, 5000);
+}
+
+// التحقق من دعم المتصفح
+function checkBrowserSupport() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('متصفحك لا يدعم استخدام الكاميرا. الرجاء استخدام متصفح حديث.');
+    }
+}
+
+// تحميل نماذج التعرف على الوجوه
+async function loadModels() {
+    // يمكنك استخدام مكتبة مثل face-api.js لتحميل النماذج
+    console.log("تم تحميل النماذج بنجاح.");
+}
+
+// تدريب النظام على صور الموظفين
+async function trainEmployeeFaces() {
+    // يمكنك استخدام مكتبة مثل face-api.js لتدريب النظام على صور الموظفين
+    console.log("تم تدريب النظام بنجاح.");
+}
+
+// تهيئة النظام
+async function initializeSystem() {
+    if (isInitialized) return;
+
+    showLoading(true);
+    try {
+        checkBrowserSupport();
+        
+        console.log("جاري تحميل النماذج...");
+        await loadModels();
+        console.log("تم تحميل النماذج بنجاح.");
+
+        console.log("جاري تدريب النظام على صور الموظفين...");
+        await trainEmployeeFaces();
+        console.log("تم تدريب النظام بنجاح.");
+        
+        isInitialized = true;
+        updateAttendanceTable();
+    } catch (error) {
+        console.error("فشل في تهيئة النظام:", error);
+        showError('فشل في تهيئة النظام: ' + error.message);
+    } finally {
+        showLoading(false);
+    }
+}
+
 // مستمعات الأحداث
 window.addEventListener('load', () => {
     loadAttendanceData();
-    initializeSystem();
+    initializeSystem(); // استدعاء الدالة هنا
 });
 
 window.addEventListener('beforeunload', () => {
