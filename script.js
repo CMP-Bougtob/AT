@@ -36,8 +36,7 @@ const employees = [
         frenchName: "Bouaka_Baghdadi", 
         imageFiles: Array.from({length: TRAINING_IMAGES_PER_EMPLOYEE}, (_, i) => `Bouaka_${i + 1}.jpg`),
         department: "الإنتاج"
-    },
-    // Add other employees with similar structure
+    }
 ].map(emp => ({
     ...emp,
     morning: { in: null, out: null },
@@ -55,9 +54,8 @@ let currentStream = null;
 let faceMatcher = null;
 
 // Face detection options
-const FACE_DETECTION_OPTIONS = new faceapi.TinyFaceDetectorOptions({
-    inputSize: 512,
-    scoreThreshold: 0.5
+const FACE_DETECTION_OPTIONS = new faceapi.SsdMobilenetv1Options({
+    minConfidence: 0.5
 });
 
 // Time windows for attendance
@@ -75,7 +73,33 @@ const TIME_WINDOWS = {
 // Initialize face-api.js models
 async function loadModels() {
     try {
-        const modelPath = '/models';
+        const modelPath = './models';
+        console.log("بدء تحميل النماذج من:", modelPath);
+        
+        // التحقق من وجود النماذج
+        const checkModelFiles = async () => {
+            const modelFiles = [
+                'tiny_face_detector_model-weights_manifest.json',
+                'face_landmark_68_model-weights_manifest.json',
+                'face_recognition_model-weights_manifest.json',
+                'face_expression_model-weights_manifest.json',
+                'ssd_mobilenetv1_model-weights_manifest.json'
+            ];
+            
+            for (const file of modelFiles) {
+                try {
+                    const response = await fetch(`${modelPath}/${file}`);
+                    if (!response.ok) {
+                        throw new Error(`فشل في تحميل الملف: ${file}`);
+                    }
+                } catch (error) {
+                    throw new Error(`فشل في الوصول إلى ملف النموذج ${file}: ${error.message}`);
+                }
+            }
+        };
+        
+        await checkModelFiles();
+        
         await Promise.all([
             faceapi.nets.tinyFaceDetector.loadFromUri(modelPath),
             faceapi.nets.faceLandmark68Net.loadFromUri(modelPath),
@@ -83,17 +107,29 @@ async function loadModels() {
             faceapi.nets.faceExpressionNet.loadFromUri(modelPath),
             faceapi.nets.ssdMobilenetv1.loadFromUri(modelPath)
         ]);
-        console.log("تم تحميل النماذج بنجاح");
+        
+        console.log("تم تحميل جميع النماذج بنجاح");
     } catch (error) {
         console.error("فشل في تحميل النماذج:", error);
-        throw new Error('فشل في تحميل نماذج التعرف على الوجه: ' + error.message);
+        throw new Error(`فشل في تحميل نماذج التعرف على الوجه: ${error.message}`);
     }
 }
 
 // Load and process training images
 async function loadTrainingImage(employee, imageFile) {
     try {
-        const img = await faceapi.fetchImage(`/images/${employee.department}/${imageFile}`);
+        const imagePath = `./images/${imageFile}`;
+        console.log(`محاولة تحميل الصورة: ${imagePath}`);
+        
+        // التحقق من وجود الصورة
+        const checkImage = await fetch(imagePath);
+        if (!checkImage.ok) {
+            throw new Error(`الصورة غير موجودة: ${imagePath}`);
+        }
+        
+        const img = await faceapi.fetchImage(imagePath);
+        console.log(`تم تحميل الصورة: ${imageFile}`);
+        
         const detection = await faceapi
             .detectSingleFace(img, FACE_DETECTION_OPTIONS)
             .withFaceLandmarks()
@@ -104,6 +140,7 @@ async function loadTrainingImage(employee, imageFile) {
             return null;
         }
         
+        console.log(`تم استخراج خصائص الوجه من الصورة: ${imageFile}`);
         return detection.descriptor;
     } catch (error) {
         console.error(`خطأ في معالجة صورة التدريب ${imageFile} للموظف ${employee.name}:`, error);
@@ -114,6 +151,8 @@ async function loadTrainingImage(employee, imageFile) {
 // Train the system with employee faces
 async function trainEmployeeFaces() {
     try {
+        console.log("بدء تدريب النظام على وجوه الموظفين");
+        
         const labeledDescriptors = await Promise.all(
             employees.map(async (employee) => {
                 const descriptors = [];
@@ -130,6 +169,7 @@ async function trainEmployeeFaces() {
                     throw new Error(`لم يتم العثور على وجوه صالحة في صور التدريب للموظف ${employee.name}`);
                 }
                 
+                console.log(`تم تدريب النظام على ${descriptors.length} صور للموظف ${employee.name}`);
                 return new faceapi.LabeledFaceDescriptors(employee.frenchName, descriptors);
             })
         );
@@ -153,6 +193,7 @@ async function initializeSystem() {
         await loadAttendanceData();
         isInitialized = true;
         updateAttendanceTable();
+        console.log("تم تهيئة النظام بنجاح");
     } catch (error) {
         console.error("فشل في تهيئة النظام:", error);
         showError('فشل في تهيئة النظام: ' + error.message);
@@ -161,7 +202,7 @@ async function initializeSystem() {
     }
 }
 
-// Enhanced face detection and camera handling
+// Start camera
 async function startCamera() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -206,52 +247,68 @@ async function startCamera() {
     }
 }
 
-// Stop camera and cleanup
-function stopCamera() {
-    if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-        currentStream = null;
+// Face recognition process
+async function recognizeFace(video) {
+    try {
+        console.log("بدء عملية التعرف على الوجه");
         
-        const video = document.getElementById('video');
-        video.srcObject = null;
-        video.style.display = 'none';
+        const detections = await faceapi
+            .detectAllFaces(video, FACE_DETECTION_OPTIONS)
+            .withFaceLandmarks()
+            .withFaceDescriptors();
         
-        const canvas = document.getElementById('overlay');
-        canvas.style.display = 'none';
-        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+        console.log(`تم العثور على ${detections.length} وجه/وجوه`);
+        
+        if (detections.length === 0) {
+            throw new Error('لم يتم العثور على وجه في الصورة');
+        }
+        
+        if (detections.length > 1) {
+            throw new Error('تم اكتشاف أكثر من وجه في الصورة');
+        }
+        
+        const match = faceMatcher.findBestMatch(detections[0].descriptor);
+        console.log(`نتيجة المطابقة: ${match.label} بدرجة ثقة ${(1 - match.distance).toFixed(2)}`);
+        
+        if (match.distance > RECOGNITION_THRESHOLD) {
+            throw new Error('لم يتم التعرف على الموظف بثقة كافية');
+        }
+        
+        const employee = employees.find(emp => emp.frenchName === match.label);
+        if (!employee) {
+            throw new Error('لم يتم العثور على بيانات الموظف');
+        }
+        
+        return {
+            employee,
+            confidence: 1 - match.distance
+        };
+    } catch (error) {
+        console.error("خطأ في التعرف على الوجه:", error);
+        throw error;
     }
 }
 
-// Face recognition process
-async function recognizeFace(video) {
-    const detections = await faceapi
-        .detectAllFaces(video, FACE_DETECTION_OPTIONS)
-        .withFaceLandmarks()
-        .withFaceDescriptors();
-    
-    if (detections.length === 0) {
-        throw new Error('لم يتم العثور على وجه في الصورة');
-    }
-    
-    if (detections.length > 1) {
-        throw new Error('تم اكتشاف أكثر من وجه في الصورة');
-    }
-    
-    const match = faceMatcher.findBestMatch(detections[0].descriptor);
-    
-    if (match.distance > RECOGNITION_THRESHOLD) {
-        throw new Error('لم يتم التعرف على الموظف بثقة كافية');
-    }
-    
-    const employee = employees.find(emp => emp.frenchName === match.label);
-    if (!employee) {
-        throw new Error('لم يتم العثور على بيانات الموظف');
-    }
-    
-    return {
-        employee,
-        confidence: 1 - match.distance
-    };
+// Add countdown before taking photo
+function startCountdown(seconds = 3) {
+    return new Promise((resolve) => {
+        const countdownElement = document.getElementById('countdown');
+        countdownElement.style.display = 'block';
+        
+        let remaining = seconds;
+        
+        const countdownInterval = setInterval(() => {
+            countdownElement.textContent = remaining;
+            
+            if (remaining <= 0) {
+                clearInterval(countdownInterval);
+                countdownElement.style.display = 'none';
+                resolve();
+            }
+            
+            remaining--;
+        }, 1000);
+    });
 }
 
 // Process attendance
@@ -259,16 +316,15 @@ async function processAttendance(type) {
     const video = document.getElementById('video');
     
     try {
+        console.log(`بدء معالجة ${type === 'in' ? 'الحضور' : 'الانصراف'}`);
         const recognitionResults = [];
         
-        // Multiple recognition attempts for verification
         for (let i = 0; i < VERIFICATION_ATTEMPTS; i++) {
             await new Promise(resolve => setTimeout(resolve, 500));
             const result = await recognizeFace(video);
             recognitionResults.push(result);
         }
         
-        // Verify all attempts recognized the same employee
         const allSameEmployee = recognitionResults.every(result => 
             result.employee.frenchName === recognitionResults[0].employee.frenchName
         );
@@ -277,17 +333,14 @@ async function processAttendance(type) {
             throw new Error('فشل في التحقق من هوية الموظف. الرجاء المحاولة مرة أخرى');
         }
         
-        // Calculate average confidence
         const avgConfidence = recognitionResults.reduce((sum, result) => sum + result.confidence, 0) / VERIFICATION_ATTEMPTS;
         
         const employee = recognitionResults[0].employee;
         const currentTime = new Date();
         const period = currentTime.getHours() < 12 ? 'morning' : 'evening';
         
-        // Validate attendance timing
         validateAttendanceTiming(employee, period, type, currentTime);
         
-        // Update attendance record
         if (type === 'in') {
             employee[period].in = currentTime.toLocaleTimeString('ar-DZ');
             employee.status = 'in';
@@ -298,7 +351,6 @@ async function processAttendance(type) {
         
         employee.lastUpdated = currentTime.toISOString();
         
-        // Save and update UI
         updateAttendanceTable();
         await saveAttendanceData();
         
@@ -349,48 +401,6 @@ async function processHoliday() {
     } catch (error) {
         console.error("فشل في معالجة العطلة:", error);
         throw new Error('فشل في معالجة العطلة: ' + error.message);
-    }
-}
-
-// Confirm holiday
-async function confirmHoliday() {
-    const startDate = document.getElementById('startDate').value;
-    const endDate = document.getElementById('endDate').value;
-    const reason = document.getElementById('holidayReason').value;
-    
-    if (!startDate || !endDate || !reason) {
-        showError("الرجاء إدخال جميع البيانات المطلوبة");
-        return;
-    }
-    
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    
-    if (start > end) {
-        showError("تاريخ البداية يجب أن يكون قبل تاريخ النهاية");
-        return;
-    }
-    
-    try {
-        const selectedEmployee = document.getElementById('holidayModal').dataset.employeeId;
-        const employee = employees.find(emp => emp.frenchName === selectedEmployee);
-        
-        if (!employee) {
-            throw new Error('لم يتم العثور على بيانات الموظف');
-        }
-        
-        employee.holiday = { start: startDate, end: endDate, reason };
-        employee.status = 'holiday';
-        employee.lastUpdated = new Date().toISOString();
-        
-        await saveAttendanceData();
-        updateAttendanceTable();
-        closeHolidayModal();
-        
-        showSuccess(`تم تسجيل عطلة ${employee.name} من ${startDate} إلى ${endDate}`);
-    } catch (error) {
-        console.error("فشل في تسجيل العطلة:", error);
-        showError('فشل في تسجيل العطلة: ' + error.message);
     }
 }
 
@@ -463,22 +473,16 @@ function updateAttendanceTable() {
 }
 
 function formatPeriod(period) {
-    if (!period || typeof period !== 'object') {
-        return '- / -';
-    }
+    if (!period || typeof period !== 'object') return '- / -';
     return `${period.in || '-'} / ${period.out || '-'}`;
 }
 
 function getStatusDisplay(employee) {
     switch (employee.status) {
-        case 'in':
-            return '<span class="status-badge in">متواجد</span>';
-        case 'out':
-            return '<span class="status-badge out">غير متواجد</span>';
-        case 'holiday':
-            return '<span class="status-badge holiday">في عطلة</span>';
-        default:
-            return '-';
+        case 'in': return '<span class="status-badge in">متواجد</span>';
+        case 'out': return '<span class="status-badge out">غير متواجد</span>';
+        case 'holiday': return '<span class="status-badge holiday">في عطلة</span>';
+        default: return '-';
     }
 }
 
@@ -493,42 +497,13 @@ function formatHolidayInfo(holiday) {
     `;
 }
 
-// Modal Handling
-function showHolidayModal(employee) {
-    const modal = document.getElementById('holidayModal');
-    const overlay = document.getElementById('holidayModalOverlay');
-    const employeeName = document.getElementById('holidayEmployeeName');
-    
-    modal.dataset.employeeId = employee.frenchName;
-    employeeName.textContent = `تعيين عطلة للموظف: ${employee.name}`;
-    
-    document.getElementById('startDate').value = '';
-    document.getElementById('endDate').value = '';
-    document.getElementById('holidayReason').value = '';
-    
-    modal.style.display = 'block';
-    overlay.style.display = 'block';
-}
-
-function closeHolidayModal() {
-    const modal = document.getElementById('holidayModal');
-    const overlay = document.getElementById('holidayModalOverlay');
-    
-    modal.style.display = 'none';
-    overlay.style.display = 'none';
-    modal.dataset.employeeId = '';
-}
-
-// Notifications
+// UI Helper Functions
 function showSuccess(message) {
     const notification = document.getElementById('notification');
     notification.textContent = message;
     notification.className = 'notification success';
     notification.style.display = 'block';
-    
-    setTimeout(() => {
-        notification.style.display = 'none';
-    }, 5000);
+    setTimeout(() => { notification.style.display = 'none'; }, 5000);
 }
 
 function showError(message) {
@@ -536,18 +511,20 @@ function showError(message) {
     notification.textContent = message;
     notification.className = 'notification error';
     notification.style.display = 'block';
-    
-    setTimeout(() => {
-        notification.style.display = 'none';
-    }, 5000);
+    setTimeout(() => { notification.style.display = 'none'; }, 5000);
 }
 
 function showLoading(show) {
     document.getElementById('loading').style.display = show ? 'block' : 'none';
 }
 
-// Export report to Excel
-function exportToExcel() {
+function disableButtons(disabled) {
+    const buttons = document.querySelectorAll('button');
+    buttons.forEach(button => button.disabled = disabled);
+}
+
+// Export to Excel
+async function exportToExcel() {
     try {
         const date = new Date();
         const workbook = XLSX.utils.book_new();
@@ -572,34 +549,14 @@ function exportToExcel() {
             ]);
         });
         
-        // Holiday sheet
-        const holidayData = [
-            ['تقرير العطل'],
-            ['التاريخ:', date.toLocaleDateString('ar-DZ')],
-            [''],
-            ['اسم الموظف', 'القسم', 'تاريخ البداية', 'تاريخ النهاية', 'السبب']
-        ];
-        
-        employees.filter(emp => emp.holiday).forEach(emp => {
-            holidayData.push([
-                emp.name,
-                emp.department,
-                new Date(emp.holiday.start).toLocaleDateString('ar-DZ'),
-                new Date(emp.holiday.end).toLocaleDateString('ar-DZ'),
-                emp.holiday.reason
-            ]);
-        });
-        
         const wsAttendance = XLSX.utils.aoa_to_sheet(attendanceData);
-        const wsHoliday = XLSX.utils.aoa_to_sheet(holidayData);
-        
         XLSX.utils.book_append_sheet(workbook, wsAttendance, 'سجل الحضور');
-        XLSX.utils.book_append_sheet(workbook, wsHoliday, 'سجل العطل');
         
         XLSX.writeFile(workbook, `تقرير_الحضور_${date.toISOString().split('T')[0]}.xlsx`);
+        showSuccess('تم تصدير البيانات بنجاح');
     } catch (error) {
-        console.error("فشل في تصدير البيانات إلى Excel:", error);
-        showError('فشل في تصدير البيانات إلى Excel: ' + error.message);
+        console.error("فشل في تصدير البيانات:", error);
+        showError('فشل في تصدير البيانات: ' + error.message);
     }
 }
 
@@ -610,7 +567,7 @@ window.addEventListener('beforeunload', () => {
     saveAttendanceData();
 });
 
-// Export functions to window
+// Export window functions
 window.startAttendance = async function(type) {
     if (isProcessing) return;
     
