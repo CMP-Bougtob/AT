@@ -1,29 +1,15 @@
 {
-  "success": true,
-  "employees": [
-    {
-      "name": "مكاوي بلعيد",
-      "frenchName": "Mekawi_Belaid",
-      "morning": { "in": "08:00", "out": "12:00" },
-      "evening": { "in": "13:00", "out": "17:00" },
-      "status": "in",
-      "holiday": null
-    },
-    {
-      "name": "بوعكة بغدادي",
-      "frenchName": "Bouaka_Baghdadi",
-      "morning": { "in": "08:15", "out": "12:30" },
-      "evening": { "in": "13:15", "out": "17:30" },
-      "status": "out",
-      "holiday": null
-    },
-    {
-      "name": "سعيدي محمد",
-      "frenchName": "Saidi_Mohamed",
-      "morning": { "in": "08:05", "out": "12:10" },
-      "evening": { "in": "13:05", "out": "17:10" },
-      "status": "holiday",
-      "holiday": { "start": "2023-10-01", "end": "2023-10-07" }
-    }
-  ]
+    "employees": [
+        { "name": "مكاوي بلعيد", "frenchName": "Mekawi_Belaid", "morning": { "in": null, "out": null }, "evening": { "in": null, "out": null }, "status": "out", "holiday": null },
+        { "name": "بوعكة بغدادي", "frenchName": "Bouaka_Baghdadi", "morning": { "in": null, "out": null }, "evening": { "in": null, "out": null }, "status": "out", "holiday": null },
+        { "name": "سعيدي محمد", "frenchName": "Saidi_Mohamed", "morning": { "in": null, "out": null }, "evening": { "in": null, "out": null }, "status": "out", "holiday": null },
+        { "name": "خيلوف عمر فاروق", "frenchName": "Khilouf_Omar_Farouk", "morning": { "in": null, "out": null }, "evening": { "in": null, "out": null }, "status": "out", "holiday": null },
+        { "name": "توتاي حمزة", "frenchName": "Toutai_Hamza", "morning": { "in": null, "out": null }, "evening": { "in": null, "out": null }, "status": "out", "holiday": null },
+        { "name": "صحراوي شرف الدين", "frenchName": "Sahraoui_Cherif_Eddine", "morning": { "in": null, "out": null }, "evening": { "in": null, "out": null }, "status": "out", "holiday": null },
+        { "name": "مقدم محمد أمين", "frenchName": "Mokadem_Mohamed_Amine", "morning": { "in": null, "out": null }, "evening": { "in": null, "out": null }, "status": "out", "holiday": null },
+        { "name": "عزاوي حاج", "frenchName": "Azzawi_Hadj", "morning": { "in": null, "out": null }, "evening": { "in": null, "out": null }, "status": "out", "holiday": null },
+        { "name": "بقافلة خيرة", "frenchName": "Bekafla_Kheira", "morning": { "in": null, "out": null }, "evening": { "in": null, "out": null }, "status": "out", "holiday": null },
+        { "name": "محاري مروان", "frenchName": "Mahari_Marouane", "morning": { "in": null, "out": null }, "evening": { "in": null, "out": null }, "status": "out", "holiday": null },
+        { "name": "عمريو عبد القادر", "frenchName": "Amriou_Abdelkader", "morning": { "in": null, "out": null }, "evening": { "in": null, "out": null }, "status": "out", "holiday": null }
+    ]
 }
