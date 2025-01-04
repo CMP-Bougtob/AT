@@ -200,7 +200,14 @@ async function processAttendance(type) {
         // افتراضيًا، نحدد الموظف الأول (يمكن تغيير هذا ليتناسب مع التعرف على الوجه)
         const employee = employees[0];
 
+        if (!employee) {
+            throw new Error("لم يتم العثور على الموظف.");
+        }
+
         if (type === 'in') {
+            if (!employee.morning) employee.morning = { in: null, out: null };
+            if (!employee.evening) employee.evening = { in: null, out: null };
+
             if (!employee.morning.in) {
                 employee.morning.in = timeString;
                 employee.status = 'in';
@@ -209,6 +216,9 @@ async function processAttendance(type) {
                 employee.status = 'in';
             }
         } else if (type === 'out') {
+            if (!employee.morning) employee.morning = { in: null, out: null };
+            if (!employee.evening) employee.evening = { in: null, out: null };
+
             if (employee.morning.in && !employee.morning.out) {
                 employee.morning.out = timeString;
                 employee.status = 'out';
@@ -391,3 +401,5 @@ window.addEventListener('beforeunload', () => {
 // جعل الدوال متاحة للنقر على الأزرار
 window.startAttendance = startAttendance;
 window.startHolidayProcess = startHolidayProcess;
+window.confirmHoliday = confirmHoliday;
+window.closeHolidayModal = closeHolidayModal;
