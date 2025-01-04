@@ -85,6 +85,7 @@ async function loadModels() {
         ]);
         console.log("تم تحميل النماذج بنجاح");
     } catch (error) {
+        console.error("فشل في تحميل النماذج:", error);
         throw new Error('فشل في تحميل نماذج التعرف على الوجه: ' + error.message);
     }
 }
@@ -136,6 +137,7 @@ async function trainEmployeeFaces() {
         faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, RECOGNITION_THRESHOLD);
         console.log("تم تدريب النظام بنجاح");
     } catch (error) {
+        console.error("فشل في تدريب النظام:", error);
         throw new Error('فشل في تدريب النظام: ' + error.message);
     }
 }
@@ -199,6 +201,7 @@ async function startCamera() {
         await video.play();
         return true;
     } catch (error) {
+        console.error("فشل في تشغيل الكاميرا:", error);
         throw new Error('فشل في تشغيل الكاميرا: ' + error.message);
     }
 }
@@ -302,6 +305,7 @@ async function processAttendance(type) {
         showSuccess(`تم تسجيل ${type === 'in' ? 'حضور' : 'انصراف'} ${employee.name} بنجاح (الثقة: ${(avgConfidence * 100).toFixed(1)}%)`);
         
     } catch (error) {
+        console.error("فشل في معالجة الحضور:", error);
         throw new Error('فشل في معالجة الحضور: ' + error.message);
     }
 }
@@ -343,6 +347,7 @@ async function processHoliday() {
         
         showHolidayModal(employee);
     } catch (error) {
+        console.error("فشل في معالجة العطلة:", error);
         throw new Error('فشل في معالجة العطلة: ' + error.message);
     }
 }
@@ -384,6 +389,7 @@ async function confirmHoliday() {
         
         showSuccess(`تم تسجيل عطلة ${employee.name} من ${startDate} إلى ${endDate}`);
     } catch (error) {
+        console.error("فشل في تسجيل العطلة:", error);
         showError('فشل في تسجيل العطلة: ' + error.message);
     }
 }
@@ -406,6 +412,7 @@ async function saveAttendanceData() {
         await set(ref(database, `attendance/${date}`), attendanceData);
         console.log('تم حفظ البيانات بنجاح');
     } catch (error) {
+        console.error("فشل في حفظ البيانات:", error);
         throw new Error('فشل في حفظ البيانات: ' + error.message);
     }
 }
@@ -541,54 +548,59 @@ function showLoading(show) {
 
 // Export report to Excel
 function exportToExcel() {
-    const date = new Date();
-    const workbook = XLSX.utils.book_new();
-    
-    // Attendance sheet
-    const attendanceData = [
-        ['تقرير الحضور والانصراف - اتصالات الجزائر'],
-        ['التاريخ:', date.toLocaleDateString('ar-DZ')],
-        [''],
-        ['اسم الموظف', 'القسم', 'دخول صباحي', 'خروج صباحي', 'دخول مسائي', 'خروج مسائي', 'الحالة']
-    ];
-    
-    employees.forEach(emp => {
-        attendanceData.push([
-            emp.name,
-            emp.department,
-            emp.morning.in || '-',
-            emp.morning.out || '-',
-            emp.evening.in || '-',
-            emp.evening.out || '-',
-            emp.status === 'in' ? 'متواجد' : emp.status === 'out' ? 'غير متواجد' : 'عطلة'
-        ]);
-    });
-    
-    // Holiday sheet
-    const holidayData = [
-        ['تقرير العطل'],
-        ['التاريخ:', date.toLocaleDateString('ar-DZ')],
-        [''],
-        ['اسم الموظف', 'القسم', 'تاريخ البداية', 'تاريخ النهاية', 'السبب']
-    ];
-    
-    employees.filter(emp => emp.holiday).forEach(emp => {
-        holidayData.push([
-            emp.name,
-            emp.department,
-            new Date(emp.holiday.start).toLocaleDateString('ar-DZ'),
-            new Date(emp.holiday.end).toLocaleDateString('ar-DZ'),
-            emp.holiday.reason
-        ]);
-    });
-    
-    const wsAttendance = XLSX.utils.aoa_to_sheet(attendanceData);
-    const wsHoliday = XLSX.utils.aoa_to_sheet(holidayData);
-    
-    XLSX.utils.book_append_sheet(workbook, wsAttendance, 'سجل الحضور');
-    XLSX.utils.book_append_sheet(workbook, wsHoliday, 'سجل العطل');
-    
-    XLSX.writeFile(workbook, `تقرير_الحضور_${date.toISOString().split('T')[0]}.xlsx`);
+    try {
+        const date = new Date();
+        const workbook = XLSX.utils.book_new();
+        
+        // Attendance sheet
+        const attendanceData = [
+            ['تقرير الحضور والانصراف - اتصالات الجزائر'],
+            ['التاريخ:', date.toLocaleDateString('ar-DZ')],
+            [''],
+            ['اسم الموظف', 'القسم', 'دخول صباحي', 'خروج صباحي', 'دخول مسائي', 'خروج مسائي', 'الحالة']
+        ];
+        
+        employees.forEach(emp => {
+            attendanceData.push([
+                emp.name,
+                emp.department,
+                emp.morning.in || '-',
+                emp.morning.out || '-',
+                emp.evening.in || '-',
+                emp.evening.out || '-',
+                emp.status === 'in' ? 'متواجد' : emp.status === 'out' ? 'غير متواجد' : 'عطلة'
+            ]);
+        });
+        
+        // Holiday sheet
+        const holidayData = [
+            ['تقرير العطل'],
+            ['التاريخ:', date.toLocaleDateString('ar-DZ')],
+            [''],
+            ['اسم الموظف', 'القسم', 'تاريخ البداية', 'تاريخ النهاية', 'السبب']
+        ];
+        
+        employees.filter(emp => emp.holiday).forEach(emp => {
+            holidayData.push([
+                emp.name,
+                emp.department,
+                new Date(emp.holiday.start).toLocaleDateString('ar-DZ'),
+                new Date(emp.holiday.end).toLocaleDateString('ar-DZ'),
+                emp.holiday.reason
+            ]);
+        });
+        
+        const wsAttendance = XLSX.utils.aoa_to_sheet(attendanceData);
+        const wsHoliday = XLSX.utils.aoa_to_sheet(holidayData);
+        
+        XLSX.utils.book_append_sheet(workbook, wsAttendance, 'سجل الحضور');
+        XLSX.utils.book_append_sheet(workbook, wsHoliday, 'سجل العطل');
+        
+        XLSX.writeFile(workbook, `تقرير_الحضور_${date.toISOString().split('T')[0]}.xlsx`);
+    } catch (error) {
+        console.error("فشل في تصدير البيانات إلى Excel:", error);
+        showError('فشل في تصدير البيانات إلى Excel: ' + error.message);
+    }
 }
 
 // Event Listeners
