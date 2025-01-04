@@ -40,6 +40,16 @@ let labeledFaceDescriptors = null;
 let faceMatcher = null;
 let selectedEmployeeForHoliday = null;
 
+// عرض أو إخفاء رسالة التحميل
+function showLoading(show) {
+    const loadingDiv = document.getElementById('loading');
+    if (show) {
+        loadingDiv.style.display = 'block'; // عرض رسالة التحميل
+    } else {
+        loadingDiv.style.display = 'none'; // إخفاء رسالة التحميل
+    }
+}
+
 // حفظ البيانات في Firebase
 function saveAttendanceData() {
     const date = new Date().toISOString().split('T')[0]; // تاريخ اليوم
@@ -284,10 +294,6 @@ function stopCamera() {
 }
 
 // وظائف مساعدة لواجهة المستخدم
-function showLoading(show) {
-    document.getElementById('loading').style.display = show ? 'block' : 'none';
-}
-
 function disableButtons(disabled) {
     document.getElementById('loginBtn').disabled = disabled;
     document.getElementById('logoutBtn').disabled = disabled;
