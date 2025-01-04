@@ -61,6 +61,15 @@ function loadAttendanceData() {
         if (data) {
             employees = data;
             updateAttendanceTable();
+        } else {
+            // إذا لم تكن هناك بيانات، قم بتهيئة البيانات الافتراضية
+            employees.forEach(emp => {
+                emp.morning = { in: null, out: null };
+                emp.evening = { in: null, out: null };
+                emp.status = "out";
+                emp.holiday = null;
+            });
+            updateAttendanceTable();
         }
     }, (error) => {
         console.error('Failed to load data:', error);
