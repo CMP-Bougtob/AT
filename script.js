@@ -193,16 +193,37 @@ async function startCountdown() {
 
 // معالجة تسجيل الحضور
 async function processAttendance(type) {
-    // يمكنك إضافة الكود الخاص بالتعرف على الوجه هنا
-    console.log(`تم تسجيل ${type === 'in' ? 'الدخول' : 'الخروج'}`);
-    // مثال: تحديث حالة الموظف
-    const employee = employees[0]; // افتراضيًا، يمكنك تغيير هذا ليتناسب مع التعرف على الوجه
-    if (type === 'in') {
-        employee.status = 'in';
-    } else {
-        employee.status = 'out';
+    try {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' });
+
+        // افتراضيًا، نحدد الموظف الأول (يمكن تغيير هذا ليتناسب مع التعرف على الوجه)
+        const employee = employees[0];
+
+        if (type === 'in') {
+            if (!employee.morning.in) {
+                employee.morning.in = timeString;
+                employee.status = 'in';
+            } else if (!employee.evening.in) {
+                employee.evening.in = timeString;
+                employee.status = 'in';
+            }
+        } else if (type === 'out') {
+            if (employee.morning.in && !employee.morning.out) {
+                employee.morning.out = timeString;
+                employee.status = 'out';
+            } else if (employee.evening.in && !employee.evening.out) {
+                employee.evening.out = timeString;
+                employee.status = 'out';
+            }
+        }
+
+        updateAttendanceTable();
+        saveAttendanceData(); // حفظ البيانات في Firebase بعد التحديث
+    } catch (error) {
+        console.error("فشل في تسجيل الحضور:", error);
+        showError(error.message);
     }
-    updateAttendanceTable();
 }
 
 // بدء عملية تسجيل الحضور
@@ -275,11 +296,16 @@ function confirmHoliday() {
         return;
     }
 
-    selectedEmployeeForHoliday.holiday = { start: startDate, end: endDate };
-    selectedEmployeeForHoliday.status = "holiday";
-    updateAttendanceTable();
-    closeHolidayModal();
-    alert(`تم تعيين عطلة لـ ${selectedEmployeeForHoliday.name} من ${startDate} إلى ${endDate}`);
+    if (selectedEmployeeForHoliday) {
+        selectedEmployeeForHoliday.holiday = { start: startDate, end: endDate };
+        selectedEmployeeForHoliday.status = "holiday";
+        updateAttendanceTable();
+        saveAttendanceData(); // حفظ البيانات في Firebase بعد التحديث
+        closeHolidayModal();
+        alert(`تم تعيين عطلة لـ ${selectedEmployeeForHoliday.name} من ${startDate} إلى ${endDate}`);
+    } else {
+        alert("لم يتم تحديد موظف للعطلة.");
+    }
 }
 
 // إغلاق نافذة العطلة
