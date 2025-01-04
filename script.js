@@ -155,6 +155,146 @@ async function initializeSystem() {
     }
 }
 
+// بدء عملية تسجيل الحضور
+async function startAttendance(type) {
+    if (isProcessing) return;
+    if (!isInitialized) await initializeSystem();
+
+    try {
+        isProcessing = true;
+        disableButtons(true);
+        
+        await startCamera();
+        await startCountdown();
+        await processAttendance(type);
+    } catch (error) {
+        console.error("فشل في تسجيل الحضور:", error);
+        showError(error.message);
+    } finally {
+        isProcessing = false;
+        disableButtons(false);
+        stopCamera();
+    }
+}
+
+// بدء عملية تعيين العطلة
+async function startHolidayProcess() {
+    if (isProcessing) return;
+    if (!isInitialized) await initializeSystem();
+
+    try {
+        isProcessing = true;
+        disableButtons(true);
+        
+        await startCamera();
+        await startCountdown();
+        await processHoliday();
+    } catch (error) {
+        console.error("فشل في تعيين العطلة:", error);
+        showError(error.message);
+    } finally {
+        isProcessing = false;
+        disableButtons(false);
+        stopCamera();
+    }
+}
+
+// تأكيد العطلة
+function confirmHoliday() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+
+    if (!startDate || !endDate) {
+        alert("الرجاء تحديد تاريخي بداية ونهاية العطلة.");
+        return;
+    }
+
+    if (new Date(startDate) > new Date(endDate)) {
+        alert("تاريخ البداية يجب أن يكون قبل تاريخ النهاية.");
+        return;
+    }
+
+    selectedEmployeeForHoliday.holiday = { start: startDate, end: endDate };
+    selectedEmployeeForHoliday.status = "holiday";
+    updateAttendanceTable();
+    closeHolidayModal();
+    alert(`تم تعيين عطلة لـ ${selectedEmployeeForHoliday.name} من ${startDate} إلى ${endDate}`);
+}
+
+// إغلاق نافذة العطلة
+function closeHolidayModal() {
+    document.getElementById('holidayModal').style.display = 'none';
+    document.getElementById('holidayModalOverlay').style.display = 'none';
+    selectedEmployeeForHoliday = null;
+}
+
+// تصدير إلى Excel
+function exportToExcel() {
+    const date = new Date();
+    const data = [
+        ['تقرير الحضور والانصراف - اتصالات الجزائر'],
+        ['التاريخ:', date.toLocaleDateString('ar-DZ')],
+        ['خلية الصيانة والإنتاج'],
+        [''],
+        ['اسم الموظف', 'دخول صباحي', 'خروج صباحي', 'دخول مسائي', 'خروج مسائي', 'الحالة']
+    ];
+
+    employees.forEach(emp => {
+        data.push([
+            emp.name,
+            emp.morning.in || '-',
+            emp.morning.out || '-',
+            emp.evening.in || '-',
+            emp.evening.out || '-',
+            emp.status === 'in' ? 'متواجد' : emp.status === 'out' ? 'غير متواجد' : 'عطلة'
+        ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    
+    // تنسيق ورقة العمل
+    ws['!cols'] = [
+        { wch: 25 }, // عرض عمود الاسم
+        { wch: 15 }, // عرض أعمدة الوقت
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 15 }
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'سجل الحضور');
+    XLSX.writeFile(wb, `سجل_الحضور_${date.toISOString().split('T')[0]}.xlsx`);
+}
+
+// إيقاف الكاميرا
+function stopCamera() {
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+        currentStream = null;
+        
+        const video = document.getElementById('video');
+        video.srcObject = null;
+        video.style.display = 'none';
+        
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        context.clearRect(0, 0, canvas.width, canvas.height);
+    }
+}
+
+// وظائف مساعدة لواجهة المستخدم
+function showLoading(show) {
+    document.getElementById('loading').style.display = show ? 'block' : 'none';
+}
+
+function disableButtons(disabled) {
+    document.getElementById('loginBtn').disabled = disabled;
+    document.getElementById('logoutBtn').disabled = disabled;
+    document.getElementById('holidayBtn').disabled = disabled;
+    document.getElementById('exportBtn').disabled = disabled;
+}
+
 // مستمعات الأحداث
 window.addEventListener('load', () => {
     loadAttendanceData();
