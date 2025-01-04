@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Permissions-Policy" content="interest-cohort=()">
-    <title>نظام تسجيل الدخول والخروج - خلية الصيانة والإنتاج</title>
+    <title>نظام تسجيل الدخول والخروج - اتصالات الجزائر</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -337,21 +337,10 @@
         // بيانات الموظفين
         let employees = [];
 
-        // متغيرات عامة
-        let isInitialized = false;
-        let isProcessing = false;
-        let currentStream = null;
-        let labeledFaceDescriptors = null;
-        let faceMatcher = null;
-        let selectedEmployeeForHoliday = null;
-
-        // API URL
-        const API_URL = 'https://cmp-bougtob.42web.io/api.php';
-
-        // جلب بيانات الموظفين من قاعدة البيانات
+        // جلب بيانات الموظفين من ملف JSON
         async function fetchEmployees() {
             try {
-                const response = await fetch(`${API_URL}?action=getEmployees`);
+                const response = await fetch('./data.json'); // تحميل ملف JSON
                 const data = await response.json();
                 if (data.success) {
                     employees = data.employees;
@@ -365,28 +354,13 @@
             }
         }
 
-        // حفظ بيانات الموظفين في قاعدة البيانات
-        async function saveEmployees() {
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        action: 'saveEmployees',
-                        employees: employees,
-                    }),
-                });
-                const data = await response.json();
-                if (!data.success) {
-                    throw new Error('فشل في حفظ بيانات الموظفين');
-                }
-            } catch (error) {
-                console.error("فشل في حفظ بيانات الموظفين:", error);
-                showError('فشل في حفظ بيانات الموظفين: ' + error.message);
-            }
-        }
+        // متغيرات عامة
+        let isInitialized = false;
+        let isProcessing = false;
+        let currentStream = null;
+        let labeledFaceDescriptors = null;
+        let faceMatcher = null;
+        let selectedEmployeeForHoliday = null;
 
         // فتح نافذة العطلة
         function openHolidayModal(employee) {
@@ -404,7 +378,7 @@
         }
 
         // تأكيد العطلة
-        async function confirmHoliday() {
+        function confirmHoliday() {
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
 
@@ -422,7 +396,6 @@
             selectedEmployeeForHoliday.status = "holiday";
             updateAttendanceTable();
             closeHolidayModal();
-            await saveEmployees(); // حفظ التغييرات في قاعدة البيانات
             alert(`تم تعيين عطلة لـ ${selectedEmployeeForHoliday.name} من ${startDate} إلى ${endDate}`);
         }
 
@@ -805,20 +778,45 @@
             document.getElementById('exportBtn').disabled = disabled;
         }
 
+        // وظائف التخزين المحلي
+        function saveAttendanceData() {
+            localStorage.setItem('attendanceData', JSON.stringify(employees));
+            localStorage.setItem('lastUpdate', new Date().toISOString());
+        }
+
+        function loadAttendanceData() {
+            const savedData = localStorage.getItem('attendanceData');
+            const lastUpdate = localStorage.getItem('lastUpdate');
+            
+            if (savedData && lastUpdate) {
+                const lastUpdateDate = new Date(lastUpdate);
+                const today = new Date();
+                
+                // إعادة تعيين البيانات إذا كانت من يوم سابق
+                if (lastUpdateDate.toDateString() !== today.toDateString()) {
+                    localStorage.clear();
+                    return;
+                }
+                
+                const parsedData = JSON.parse(savedData);
+                employees.forEach((emp, index) => {
+                    Object.assign(emp, parsedData[index]);
+                });
+            }
+        }
+
         // مستمعات الأحداث
         window.addEventListener('load', async () => {
-            await fetchEmployees(); // جلب بيانات الموظفين من قاعدة البيانات
+            await fetchEmployees(); // جلب بيانات الموظفين من ملف JSON
             await initializeSystem();
         });
 
-        window.addEventListener('beforeunload', async () => {
-            await saveEmployees(); // حفظ البيانات في قاعدة البيانات قبل إغلاق الصفحة
+        window.addEventListener('beforeunload', () => {
+            saveAttendanceData();
         });
 
         // الحفظ التلقائي الدوري
-        setInterval(async () => {
-            await saveEmployees(); // حفظ البيانات كل دقيقة
-        }, 60000);
+        setInterval(saveAttendanceData, 60000); // الحفظ كل دقيقة
     </script>
 </body>
 </html>
