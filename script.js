@@ -85,6 +85,9 @@ function updateAttendanceTable() {
 
 // تنسيق عرض الفترة
 function formatPeriod(period) {
+    if (!period || typeof period !== 'object') {
+        return '- / -'; // إرجاع قيمة افتراضية إذا كانت البيانات غير صحيحة
+    }
     return `${period.in || '-'} / ${period.out || '-'}`;
 }
 
