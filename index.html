@@ -345,36 +345,32 @@
         let faceMatcher = null;
         let selectedEmployeeForHoliday = null;
 
-        // تحميل بيانات الموظفين من ملف data.json
-        async function loadEmployees() {
-            try {
-                const response = await fetch('./data.json');
-                const data = await response.json();
-                employees = data.employees;
-            } catch (error) {
-                console.error('فشل في تحميل بيانات الموظفين:', error);
-                showError('فشل في تحميل بيانات الموظفين');
+        // تحميل بيانات الموظفين من localStorage
+        function loadEmployees() {
+            const savedData = localStorage.getItem('attendanceData');
+            if (savedData) {
+                employees = JSON.parse(savedData);
+            } else {
+                // بيانات افتراضية إذا لم توجد بيانات محفوظة
+                employees = [
+                    { name: "مكاوي بلعيد", frenchName: "Mekawi_Belaid", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null },
+                    { name: "بوعكة بغدادي", frenchName: "Bouaka_Baghdadi", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null },
+                    { name: "سعيدي محمد", frenchName: "Saidi_Mohamed", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null },
+                    { name: "خيلوف عمر فاروق", frenchName: "Khilouf_Omar_Farouk", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null },
+                    { name: "توتاي حمزة", frenchName: "Toutai_Hamza", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null },
+                    { name: "صحراوي شرف الدين", frenchName: "Sahraoui_Cherif_Eddine", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null },
+                    { name: "مقدم محمد أمين", frenchName: "Mokadem_Mohamed_Amine", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null },
+                    { name: "عزاوي حاج", frenchName: "Azzawi_Hadj", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null },
+                    { name: "بقافلة خيرة", frenchName: "Bekafla_Kheira", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null },
+                    { name: "محاري مروان", frenchName: "Mahari_Marouane", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null },
+                    { name: "عمريو عبد القادر", frenchName: "Amriou_Abdelkader", morning: { in: null, out: null }, evening: { in: null, out: null }, status: "out", holiday: null }
+                ];
             }
         }
 
-        // حفظ بيانات الموظفين في ملف data.json
-        async function saveEmployees() {
-            try {
-                const response = await fetch('./data.json', {
-                    method: 'PUT', // أو 'POST' حسب إعدادات الخادم
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ employees })
-                });
-
-                if (!response.ok) {
-                    throw new Error('فشل في حفظ البيانات');
-                }
-            } catch (error) {
-                console.error('فشل في حفظ بيانات الموظفين:', error);
-                showError('فشل في حفظ بيانات الموظفين');
-            }
+        // حفظ بيانات الموظفين في localStorage
+        function saveEmployees() {
+            localStorage.setItem('attendanceData', JSON.stringify(employees));
         }
 
         // التحقق من دعم المتصفح للكاميرا
@@ -688,7 +684,7 @@
 
         // مستمعات الأحداث
         window.addEventListener('load', async () => {
-            await loadEmployees();
+            loadEmployees();
             await initializeSystem();
         });
 
