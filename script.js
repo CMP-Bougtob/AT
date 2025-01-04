@@ -165,6 +165,46 @@ async function initializeSystem() {
     }
 }
 
+// بدء تشغيل الكاميرا
+async function startCamera() {
+    try {
+        const video = document.getElementById('video');
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        currentStream = stream;
+        video.srcObject = stream;
+        video.style.display = 'block';
+        await new Promise(resolve => video.onloadedmetadata = resolve);
+    } catch (error) {
+        console.error("فشل في بدء تشغيل الكاميرا:", error);
+        throw new Error("فشل في بدء تشغيل الكاميرا. الرجاء التأكد من أن الكاميرا متاحة.");
+    }
+}
+
+// بدء العد التنازلي
+async function startCountdown() {
+    const countdownDiv = document.getElementById('countdown');
+    countdownDiv.style.display = 'flex';
+    for (let i = 3; i > 0; i--) {
+        countdownDiv.textContent = i;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    countdownDiv.style.display = 'none';
+}
+
+// معالجة تسجيل الحضور
+async function processAttendance(type) {
+    // يمكنك إضافة الكود الخاص بالتعرف على الوجه هنا
+    console.log(`تم تسجيل ${type === 'in' ? 'الدخول' : 'الخروج'}`);
+    // مثال: تحديث حالة الموظف
+    const employee = employees[0]; // افتراضيًا، يمكنك تغيير هذا ليتناسب مع التعرف على الوجه
+    if (type === 'in') {
+        employee.status = 'in';
+    } else {
+        employee.status = 'out';
+    }
+    updateAttendanceTable();
+}
+
 // بدء عملية تسجيل الحضور
 async function startAttendance(type) {
     if (isProcessing) return;
@@ -174,7 +214,7 @@ async function startAttendance(type) {
         isProcessing = true;
         disableButtons(true);
         
-        await startCamera();
+        await startCamera(); // بدء تشغيل الكاميرا
         await startCountdown();
         await processAttendance(type);
     } catch (error) {
@@ -187,6 +227,17 @@ async function startAttendance(type) {
     }
 }
 
+// معالجة تعيين العطلة
+async function processHoliday() {
+    // يمكنك إضافة الكود الخاص بالتعرف على الوجه هنا
+    console.log("تم تعيين العطلة");
+    // مثال: تحديد الموظف المحدد للعطلة
+    selectedEmployeeForHoliday = employees[0]; // افتراضيًا، يمكنك تغيير هذا ليتناسب مع التعرف على الوجه
+    document.getElementById('holidayEmployeeName').textContent = selectedEmployeeForHoliday.name;
+    document.getElementById('holidayModal').style.display = 'block';
+    document.getElementById('holidayModalOverlay').style.display = 'block';
+}
+
 // بدء عملية تعيين العطلة
 async function startHolidayProcess() {
     if (isProcessing) return;
@@ -196,7 +247,7 @@ async function startHolidayProcess() {
         isProcessing = true;
         disableButtons(true);
         
-        await startCamera();
+        await startCamera(); // بدء تشغيل الكاميرا
         await startCountdown();
         await processHoliday();
     } catch (error) {
