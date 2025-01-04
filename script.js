@@ -310,3 +310,7 @@ window.addEventListener('load', () => {
 window.addEventListener('beforeunload', () => {
     saveAttendanceData();
 });
+
+// جعل الدوال متاحة للنقر على الأزرار
+window.startAttendance = startAttendance;
+window.startHolidayProcess = startHolidayProcess;
